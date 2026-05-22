@@ -1,4 +1,10 @@
 import { useState } from "react";
+import { db } from "./firebase";
+
+import {
+  collection,
+  addDoc
+} from "firebase/firestore";
 
 function App() {
 const [equipmentList, setEquipmentList] = useState([
@@ -45,8 +51,8 @@ const handleEditEquipment = (item, index) =>
     setEditIndex(index);
     setIsEditing(true);
   };
-const handleAddEquipment = () => {
 
+const handleAddEquipment = async () => {
   const newEquipment = {
     id: equipmentId,
     name: equipmentName,
@@ -54,7 +60,11 @@ const handleAddEquipment = () => {
     location: location,
     status: status
   };
-
+  await addDoc
+  (
+  collection(db, "equipment"),
+  newEquipment
+  );
   if (isEditing) {
 
   const updatedList = [...equipmentList];
