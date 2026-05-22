@@ -21,22 +21,63 @@ const [equipmentId, setEquipmentId] = useState("");
 const [equipmentName, setEquipmentName] = useState("");
 const [location, setLocation] = useState("");
 const [status, setStatus] = useState("Running");
+const [category, setCategory] = useState("Motor");
+const [searchTerm, setSearchTerm] = useState("");
+const [editIndex, setEditIndex] = useState(null);
+const [isEditing, setIsEditing] = useState(false);
+const handleDeleteEquipment = (indexToDelete) => 
+  {
+    const updatedList = equipmentList.filter
+    (
+    (_, index) => index !== indexToDelete
+    );
+    setEquipmentList(updatedList);
+  };
+const handleEditEquipment = (item, index) => 
+  {
+
+    setEquipmentId(item.id);
+    setEquipmentName(item.name);
+    setCategory(item.category);
+    setLocation(item.location);
+    setStatus(item.status);
+
+    setEditIndex(index);
+    setIsEditing(true);
+  };
 const handleAddEquipment = () => {
 
   const newEquipment = {
     id: equipmentId,
     name: equipmentName,
+    category: category,
     location: location,
     status: status
   };
 
+  if (isEditing) {
+
+  const updatedList = [...equipmentList];
+
+  updatedList[editIndex] = newEquipment;
+
+  setEquipmentList(updatedList);
+
+  setIsEditing(false);
+  setEditIndex(null);
+
+} else {
+
   setEquipmentList([...equipmentList, newEquipment]);
+
+}
 
   setEquipmentId("");
   setEquipmentName("");
   setLocation("");
   setStatus("Running");
 };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
 
@@ -75,7 +116,47 @@ const handleAddEquipment = () => {
         <h2 className="text-3xl font-bold mb-8">
           Dashboard
         </h2>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h3 className="text-lg font-semibold">
+              Total Equipment
+          </h3>
+
+          <p className="text-5xl font-bold text-blue-600 mt-4">
+            {equipmentList.length}
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h3 className="text-lg font-semibold">
+              Under Repair
+          </h3>
+
+          <p className="text-5xl font-bold text-red-500 mt-4">
+            {
+              equipmentList.filter(
+                (item) => item.status === "Under Repair"
+                ).length
+            }
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h3 className="text-lg font-semibold">
+              Available
+          </h3>
+
+          <p className="text-5xl font-bold text-green-600 mt-4">
+              {
+                equipmentList.filter(
+              (item) => item.status === "Running"
+              ).length
+              }
+          </p>
+        </div>
+
+    </div>
         {/* Cards */}
         {/* Add Equipment Form */}
 
@@ -105,6 +186,7 @@ const handleAddEquipment = () => {
       <label className="block mb-2 font-semibold">
         Equipment Name
       </label>
+
     <input
       type="text"
       placeholder="Enter Equipment Name"
@@ -114,7 +196,22 @@ const handleAddEquipment = () => {
     />
 
     </div>
+    <div>
+       <label className="block mb-2 font-semibold">
+       Category
+       </label>
 
+      <select
+      value={category}
+      onChange={(e) => setCategory(e.target.value)}
+      className="w-full border p-3 rounded-lg"
+      >
+      <option>Motor</option>
+      <option>Pump</option>
+      <option>Transformer</option>
+      <option>Panel</option>
+      </select>
+    </div>
     <div>
       <label className="block mb-2 font-semibold">
         Location
@@ -169,9 +266,21 @@ const handleAddEquipment = () => {
     Equipment List
   </h3>
 
+  <div className="flex gap-4">
+
+  <input
+    type="text"
+    placeholder="Search equipment..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="border p-2 rounded-lg"
+  />
+
   <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
     Add Equipment
   </button>
+
+</div>
 
 </div>
 
@@ -183,15 +292,21 @@ const handleAddEquipment = () => {
 
         <th className="text-left p-3">ID</th>
         <th className="text-left p-3">Equipment</th>
+        <th className="text-left p-3">Category</th>
         <th className="text-left p-3">Location</th>
         <th className="text-left p-3">Status</th>
+        <th className="text-left p-3">Action</th>
 
       </tr>
 
     </thead>
 
     <tbody>
-      {equipmentList.map((item, index) => (
+      {equipmentList
+  .filter((item) =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  .map((item, index) => (
 
   <tr key={index} className="border-b">
 
@@ -204,11 +319,45 @@ const handleAddEquipment = () => {
     </td>
 
     <td className="p-3">
+      {item.category}
+    </td>
+
+    <td className="p-3">
       {item.location}
     </td>
 
-    <td className="p-3 font-semibold">
-      {item.status}
+    <td className="p-3">
+
+  <span
+    className={`px-3 py-1 rounded-full text-white font-semibold
+    ${
+      item.status === "Running"
+        ? "bg-green-500"
+        : item.status === "Under Repair"
+        ? "bg-red-500"
+        : "bg-blue-500"
+    }`}
+  >
+    {item.status}
+  </span>
+
+</td>
+
+    <td className="p-3">
+    <button
+       onClick={() => handleEditEquipment(item, index)}
+        className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600 mr-2"
+      >
+      Edit
+    </button>
+
+      <button
+        onClick={() => handleDeleteEquipment(index)}
+        className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
+      >
+        Delete
+      </button>
+
     </td>
 
   </tr>
@@ -220,41 +369,8 @@ const handleAddEquipment = () => {
   </table>
 
 </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-lg font-semibold">
-              Total Equipment
-            </h3>
-
-            <p className="text-5xl font-bold text-blue-600 mt-4">
-              120
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-lg font-semibold">
-              Under Repair
-            </h3>
-
-            <p className="text-5xl font-bold text-red-500 mt-4">
-              15
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-lg font-semibold">
-              Available
-            </h3>
-
-            <p className="text-5xl font-bold text-green-600 mt-4">
-              85
-            </p>
-          </div>
-
-        </div>
-
-      </div>
+  </div>
 
     </div>
   )
