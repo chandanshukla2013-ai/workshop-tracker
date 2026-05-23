@@ -1,3 +1,12 @@
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import toast, { Toaster } from "react-hot-toast";
+import {
+  LayoutDashboard,
+  Wrench,
+  ClipboardList,
+  FileText
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { db } from "./firebase";
 
@@ -21,6 +30,7 @@ const [searchTerm, setSearchTerm] = useState("");
 const [editIndex, setEditIndex] = useState(null);
 const [isEditing, setIsEditing] = useState(false);
 const [loading, setLoading] = useState(false);
+const [darkMode, setDarkMode] = useState(false);
 const fetchEquipment = async () => {
 
   const querySnapshot = await getDocs(
@@ -37,8 +47,45 @@ const fetchEquipment = async () => {
 useEffect(() => {
   fetchEquipment();
 }, []);
+const exportToExcel = () => {
+
+  const exportData = equipmentList.map((item) => ({
+    Equipment_ID: item.id,
+    Equipment_Name: item.name,
+    Category: item.category,
+    Location: item.location,
+    Status: item.status
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Equipment Report"
+  );
+
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array"
+  });
+
+  const data = new Blob(
+    [excelBuffer],
+    {
+      type:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8"
+    }
+  );
+
+  saveAs(data, "equipment-report.xlsx");
+
+  toast.success("Excel exported successfully");
+};
 const handleDeleteEquipment = async (idToDelete) => {
-  const confirmDelete = window.confirm(
+const confirmDelete = window.confirm(
   "Are you sure you want to delete this equipment?"
 );
 
@@ -49,6 +96,7 @@ if (!confirmDelete) {
   await deleteDoc(doc(db, "equipment", idToDelete));
 
   fetchEquipment();
+  toast.success("Equipment deleted successfully");
 };
 const handleEditEquipment = (item, index) => 
   {
@@ -65,6 +113,23 @@ const handleEditEquipment = (item, index) =>
 
 const handleAddEquipment = async () => {
   setLoading(true);
+  if (!equipmentId.trim()) {
+  toast.error("Equipment ID is required");
+  setLoading(false);
+  return;
+}
+
+if (!equipmentName.trim()) {
+  toast.error("Equipment Name is required");
+  setLoading(false);
+  return;
+}
+
+if (!location.trim()) {
+  toast.error("Location is required");
+  setLoading(false);
+  return;
+}
   const newEquipment = {
     id: equipmentId,
     name: equipmentName,
@@ -83,6 +148,7 @@ if (isEditing) {
   );
 
   fetchEquipment();
+  toast.success("Equipment updated successfully");
 
   setIsEditing(false);
   setEditIndex(null);
@@ -95,6 +161,7 @@ if (isEditing) {
   );
 
   fetchEquipment();
+  toast.success("Equipment added successfully");
 }
 
   setEquipmentId("");
@@ -106,61 +173,118 @@ if (isEditing) {
 };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+     <>
+    <Toaster position="top-right" />
+    <div
+  className={`flex min-h-screen transition duration-500 ${
+    darkMode
+      ? "bg-slate-900 text-white"
+      : "bg-gradient-to-br from-slate-100 to-blue-100 text-slate-900"
+  }`}
+>
 
       {/* Sidebar */}
-      <div className="w-64 bg-blue-900 text-white p-5">
+      <div className="w-72 bg-slate-900 text-white p-6 shadow-2xl">
 
-        <h1 className="text-2xl font-bold mb-10">
-          Workshop Tracker
+        <h1 className="text-3xl font-extrabold mb-12 tracking-wide text-center">
+           ⚙ Workshop Tracker
         </h1>
 
-        <ul className="space-y-4">
+  <ul className="space-y-5">
 
-          <li className="bg-blue-700 p-3 rounded-lg">
-            Dashboard
-          </li>
+  <li className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-700 py-4 px-5 rounded-2xl shadow-lg font-semibold tracking-wide cursor-pointer hover:scale-105 transition duration-300">
+    <LayoutDashboard size={20} />
+    Dashboard
+  </li>
 
-          <li className="hover:bg-blue-700 p-3 rounded-lg cursor-pointer">
-            Equipment
-          </li>
+  <li className="flex items-center gap-3 hover:bg-slate-700 py-4 px-5 rounded-2xl cursor-pointer font-semibold tracking-wide transition duration-300">
+    <Wrench size={20} />
+    Equipment
+  </li>
 
-          <li className="hover:bg-blue-700 p-3 rounded-lg cursor-pointer">
-            Repairs
-          </li>
+  <li className="flex items-center gap-3 hover:bg-slate-700 py-4 px-5 rounded-2xl cursor-pointer font-semibold tracking-wide transition duration-300">
+    <ClipboardList size={20} />
+    Repairs
+  </li>
 
-          <li className="hover:bg-blue-700 p-3 rounded-lg cursor-pointer">
-            Reports
-          </li>
+  <li className="flex items-center gap-3 hover:bg-slate-700 py-4 px-5 rounded-2xl cursor-pointer font-semibold tracking-wide transition duration-300">
+    <FileText size={20} />
+    Reports
+  </li>
 
-        </ul>
+</ul>
 
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-10 overflow-auto">
+        <div className="flex justify-between items-center mb-10">
 
-        <h2 className="text-3xl font-bold mb-8">
-          Dashboard
-        </h2>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div>
+    <h2 className={`text-4xl font-extrabold ${
+  darkMode ? "text-white" : "text-slate-800"
+}`}>
+      Workshop Dashboard
+    </h2>
 
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-lg font-semibold">
+    <p className={`mt-2 ${
+  darkMode ? "text-slate-300" : "text-slate-500"
+}`}>
+      Monitor and manage workshop equipment efficiently
+    </p>
+  </div>
+
+  <div className="flex items-center gap-4">
+    <button
+  onClick={() => setDarkMode(!darkMode)}
+  className="bg-slate-800 text-white px-5 py-3 rounded-2xl shadow-lg hover:scale-105 transition duration-300 font-semibold"
+>
+  {darkMode ? "☀ Light" : "🌙 Dark"}
+</button>
+    <div className="bg-white/70 backdrop-blur-lg px-5 py-3 rounded-2xl shadow-md">
+      <p className="text-sm text-slate-500">
+        Logged in as
+      </p>
+
+      <h4 className="font-bold text-slate-700">
+        Admin User
+      </h4>
+    </div>
+
+  </div>
+
+</div>
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+
+        <div
+  className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+    darkMode
+      ? "bg-slate-800/80 border-slate-700"
+      : "bg-white/80 border-white/30"
+  }`}
+>
+          <h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
               Total Equipment
           </h3>
 
-          <p className="text-5xl font-bold text-blue-600 mt-4">
+          <p className="text-6xl font-extrabold text-blue-600 mt-4">
             {equipmentList.length}
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-lg font-semibold">
+        <div
+  className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+    darkMode
+      ? "bg-slate-800/80 border-slate-700"
+      : "bg-white/80 border-white/30"
+  }`}
+>
+          <h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
               Under Repair
           </h3>
 
-          <p className="text-5xl font-bold text-red-500 mt-4">
+          <p className="text-6xl font-extrabold text-red-500 mt-4">
             {
               equipmentList.filter(
                 (item) => item.status === "Under Repair"
@@ -169,12 +293,18 @@ if (isEditing) {
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-lg font-semibold">
+        <div
+  className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+    darkMode
+      ? "bg-slate-800/80 border-slate-700"
+      : "bg-white/80 border-white/30"
+  }`}
+>
+          <h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
               Available
           </h3>
 
-          <p className="text-5xl font-bold text-green-600 mt-4">
+          <p className="text-6xl font-extrabold text-green-600 mt-4">
               {
                 equipmentList.filter(
               (item) => item.status === "Running"
@@ -187,16 +317,26 @@ if (isEditing) {
         {/* Cards */}
         {/* Add Equipment Form */}
 
-<div className="bg-white p-6 rounded-xl shadow mb-10">
+<div
+  className={`backdrop-blur-lg p-8 rounded-3xl shadow-2xl mb-10 border ${
+    darkMode
+      ? "bg-slate-800/80 border-slate-700"
+      : "bg-white/80 border-white/30"
+  }`}
+>
 
-  <h3 className="text-2xl font-bold mb-6">
+  <h3 className={`text-3xl font-extrabold mb-8 ${
+  darkMode ? "text-white" : "text-slate-800"
+}`}>
     Add New Equipment
   </h3>
 
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
     <div>
-      <label className="block mb-2 font-semibold">
+      <label className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+  darkMode ? "text-slate-300" : "text-slate-600"
+}`}>
         Equipment ID
       </label>
 
@@ -205,12 +345,16 @@ if (isEditing) {
       placeholder="Enter ID"
       value={equipmentId}
       onChange={(e) => setEquipmentId(e.target.value)}
-      className="w-full border p-3 rounded-lg"
+      className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+  darkMode
+    ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+    : "bg-white/70 border-slate-200 text-slate-900"
+}`}
     />
     </div>
 
     <div>
-      <label className="block mb-2 font-semibold">
+      <label className="block mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">
         Equipment Name
       </label>
 
@@ -219,19 +363,27 @@ if (isEditing) {
       placeholder="Enter Equipment Name"
       value={equipmentName}
       onChange={(e) => setEquipmentName(e.target.value)}
-      className="w-full border p-3 rounded-lg"
+      className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+  darkMode
+    ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+    : "bg-white/70 border-slate-200 text-slate-900"
+}`}
     />
 
     </div>
     <div>
-       <label className="block mb-2 font-semibold">
+       <label className="block mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">
        Category
        </label>
 
       <select
       value={category}
       onChange={(e) => setCategory(e.target.value)}
-      className="w-full border p-3 rounded-lg"
+      className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+  darkMode
+    ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+    : "bg-white/70 border-slate-200 text-slate-900"
+}`}
       >
       <option>Motor</option>
       <option>Pump</option>
@@ -240,7 +392,7 @@ if (isEditing) {
       </select>
     </div>
     <div>
-      <label className="block mb-2 font-semibold">
+      <label className="block mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">
         Location
       </label>
 
@@ -249,19 +401,27 @@ if (isEditing) {
       placeholder="Enter Location"
       value={location}
       onChange={(e) => setLocation(e.target.value)}
-      className="w-full border p-3 rounded-lg"
+      className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+  darkMode
+    ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+    : "bg-white/70 border-slate-200 text-slate-900"
+}`}
     />
     </div>
 
     <div>
-      <label className="block mb-2 font-semibold">
+      <label className="block mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">
         Status
       </label>
 
     <select
       value={status}
       onChange={(e) => setStatus(e.target.value)}
-      className="w-full border p-3 rounded-lg"
+      className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+  darkMode
+    ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+    : "bg-white/70 border-slate-200 text-slate-900"
+}`}
     >
 
         <option>Running</option>
@@ -275,7 +435,7 @@ if (isEditing) {
 
  <button
   onClick={handleAddEquipment}
-  className="mt-6 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
+  className="mt-8 bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-8 py-4 rounded-2xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 font-bold tracking-wide"
  >
 
     {loading ? "Saving..." : "Save Equipment"}
@@ -285,29 +445,43 @@ if (isEditing) {
 </div>
         {/* Equipment Table */}
 
-<div className="bg-white mt-10 p-6 rounded-xl shadow">
+<div
+  className={`backdrop-blur-lg mt-10 p-8 rounded-3xl shadow-2xl border ${
+    darkMode
+      ? "bg-slate-800/80 border-slate-700"
+      : "bg-white/80 border-white/30"
+  }`}
+>
 
 <div className="flex justify-between items-center mb-6">
 
-  <h3 className="text-2xl font-bold">
+  <h3 className={`text-3xl font-extrabold ${
+  darkMode ? "text-white" : "text-slate-800"
+}`}>
     Equipment List
   </h3>
 
-  <div className="flex gap-4">
+<div className="flex items-center gap-4 mb-6">
 
   <input
     type="text"
     placeholder="Search equipment..."
     value={searchTerm}
     onChange={(e) => setSearchTerm(e.target.value)}
-    className="border p-2 rounded-lg"
+    className={`p-3 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+      darkMode
+        ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+        : "bg-white/70 border-slate-200 text-slate-900"
+    }`}
   />
 
-  <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-    Add Equipment
+  <button
+    onClick={exportToExcel}
+    className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-2xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 font-bold"
+  >
+    📥 Export Excel
   </button>
-
-</div>
+  </div>
 
 </div>
 
@@ -315,7 +489,13 @@ if (isEditing) {
 
     <thead>
 
-      <tr className="bg-gray-200">
+      <tr
+  className={`uppercase text-sm tracking-wide ${
+    darkMode
+      ? "bg-slate-700 text-slate-200"
+      : "bg-slate-100 text-slate-700"
+  }`}
+>
 
         <th className="text-left p-3">ID</th>
         <th className="text-left p-3">Equipment</th>
@@ -335,28 +515,50 @@ if (isEditing) {
   )
   .map((item, index) => (
 
-  <tr key={index} className="border-b">
+  <tr
+  key={index}
+  className={`border-b transition ${
+  darkMode
+    ? "border-slate-700 hover:bg-slate-700/40"
+    : "border-slate-200 hover:bg-slate-50"
+}`}
+>
 
-    <td className="p-3">
-      {item.id}
-    </td>
+ <td
+  className={`p-3 ${
+    darkMode ? "text-slate-200" : "text-slate-700"
+  }`}
+>
+  {item.id}
+</td>
+<td
+  className={`p-3 ${
+    darkMode ? "text-slate-200" : "text-slate-700"
+  }`}
+>
+  {item.name}
+</td>
 
-    <td className="p-3">
-      {item.name}
-    </td>
+<td
+  className={`p-3 ${
+    darkMode ? "text-slate-200" : "text-slate-700"
+  }`}
+>
+  {item.category}
+</td>
 
-    <td className="p-3">
-      {item.category}
-    </td>
-
-    <td className="p-3">
-      {item.location}
-    </td>
+<td
+  className={`p-3 ${
+    darkMode ? "text-slate-200" : "text-slate-700"
+  }`}
+>
+  {item.location}
+</td>
 
     <td className="p-3">
 
   <span
-    className={`px-3 py-1 rounded-full text-white font-semibold
+    className={`px-4 py-2 rounded-full text-white text-sm font-bold shadow-md tracking-wide
     ${
       item.status === "Running"
         ? "bg-green-500"
@@ -373,14 +575,14 @@ if (isEditing) {
     <td className="p-3">
     <button
        onClick={() => handleEditEquipment(item, index)}
-        className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600 mr-2"
+        className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 mr-2 font-semibold"
       >
       Edit
     </button>
 
       <button
         onClick={() => handleDeleteEquipment(item.firebaseId)}
-        className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
+        className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 font-semibold"
       >
         Delete
       </button>
@@ -400,6 +602,7 @@ if (isEditing) {
   </div>
 
     </div>
+    </>
   )
 }
 
