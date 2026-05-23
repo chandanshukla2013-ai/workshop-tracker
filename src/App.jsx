@@ -6,7 +6,8 @@ import {
   addDoc,
   getDocs,
   deleteDoc,
-  doc
+  doc,
+  updateDoc
 } from "firebase/firestore";
 
 function App() {
@@ -19,6 +20,7 @@ const [category, setCategory] = useState("Motor");
 const [searchTerm, setSearchTerm] = useState("");
 const [editIndex, setEditIndex] = useState(null);
 const [isEditing, setIsEditing] = useState(false);
+const [loading, setLoading] = useState(false);
 const fetchEquipment = async () => {
 
   const querySnapshot = await getDocs(
@@ -36,6 +38,13 @@ useEffect(() => {
   fetchEquipment();
 }, []);
 const handleDeleteEquipment = async (idToDelete) => {
+  const confirmDelete = window.confirm(
+  "Are you sure you want to delete this equipment?"
+);
+
+if (!confirmDelete) {
+  return;
+}
 
   await deleteDoc(doc(db, "equipment", idToDelete));
 
@@ -55,6 +64,7 @@ const handleEditEquipment = (item, index) =>
   };
 
 const handleAddEquipment = async () => {
+  setLoading(true);
   const newEquipment = {
     id: equipmentId,
     name: equipmentName,
@@ -62,32 +72,37 @@ const handleAddEquipment = async () => {
     location: location,
     status: status
   };
-  await addDoc
-  (
-  collection(db, "equipment"),
-  newEquipment
+
+if (isEditing) {
+
+  const itemToUpdate = equipmentList[editIndex];
+
+  await updateDoc(
+    doc(db, "equipment", itemToUpdate.firebaseId),
+    newEquipment
   );
-  if (isEditing) {
 
-  const updatedList = [...equipmentList];
-
-  updatedList[editIndex] = newEquipment;
-
-  setEquipmentList(updatedList);
+  fetchEquipment();
 
   setIsEditing(false);
   setEditIndex(null);
 
 } else {
 
-  setEquipmentList([...equipmentList, newEquipment]);
+  await addDoc(
+    collection(db, "equipment"),
+    newEquipment
+  );
 
+  fetchEquipment();
 }
 
   setEquipmentId("");
   setEquipmentName("");
+  setCategory("Motor");
   setLocation("");
   setStatus("Running");
+  setLoading(false);
 };
 
   return (
@@ -263,7 +278,7 @@ const handleAddEquipment = async () => {
   className="mt-6 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
  >
 
-    Save Equipment
+    {loading ? "Saving..." : "Save Equipment"}
 
   </button>
 
