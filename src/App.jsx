@@ -23,14 +23,20 @@ function App() {
 const [equipmentList, setEquipmentList] = useState([]);
 const [equipmentId, setEquipmentId] = useState("");
 const [equipmentName, setEquipmentName] = useState("");
-const [location, setLocation] = useState("");
-const [status, setStatus] = useState("Running");
+const [status, setStatus] = useState("Dismantled");
+const [currentBay, setCurrentBay] = useState("Received Bay");
 const [category, setCategory] = useState("Motor");
+const [receivedDate, setReceivedDate] = useState("");
+const [workOrderNo, setWorkOrderNo] = useState("");
+const [receivedFrom, setReceivedFrom] = useState("");
+const [equipmentDetails, setEquipmentDetails] = useState("");
+const [remark, setRemark] = useState("");
 const [searchTerm, setSearchTerm] = useState("");
 const [editIndex, setEditIndex] = useState(null);
 const [isEditing, setIsEditing] = useState(false);
 const [loading, setLoading] = useState(false);
 const [darkMode, setDarkMode] = useState(false);
+const [activeBay, setActiveBay] = useState("Received Bay");
 const fetchEquipment = async () => {
 
   const querySnapshot = await getDocs(
@@ -130,14 +136,33 @@ if (!location.trim()) {
   setLoading(false);
   return;
 }
-  const newEquipment = {
-    id: equipmentId,
-    name: equipmentName,
-    category: category,
-    location: location,
-    status: status
-  };
+let updatedBay = "";
 
+if (status === "Received") {
+  updatedBay = "Received Bay";
+}
+else if (
+  status === "Dismantled" ||
+  status === "Work Under Progress" ||
+  status === "Testing"
+) {
+  updatedBay = "Overhauling Bay";
+}
+else if (status === "Completed") {
+  updatedBay = "Finished Bay";
+}
+ const newEquipment = {
+  id: equipmentId,
+  name: equipmentName,
+  category: category,
+  status: status,
+  currentBay: updatedBay,
+  receivedDate: receivedDate,
+  workOrderNo: workOrderNo,
+  receivedFrom: receivedFrom,
+  equipmentDetails: equipmentDetails,
+  remark: remark
+};
 if (isEditing) {
 
   const itemToUpdate = equipmentList[editIndex];
@@ -167,8 +192,7 @@ if (isEditing) {
   setEquipmentId("");
   setEquipmentName("");
   setCategory("Motor");
-  setLocation("");
-  setStatus("Running");
+  setStatus("Dismantled");
   setLoading(false);
 };
 
@@ -352,6 +376,68 @@ if (isEditing) {
 }`}
     />
     </div>
+<div>
+  <label
+    className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+      darkMode ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    Received Date
+  </label>
+
+  <input
+    type="date"
+    value={receivedDate}
+    onChange={(e) => setReceivedDate(e.target.value)}
+    className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+      darkMode
+        ? "bg-slate-700 border-slate-600 text-white"
+        : "bg-white/70 border-slate-200 text-slate-900"
+    }`}
+  />
+</div>
+<div>
+  <label
+    className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+      darkMode ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    Work Order No
+  </label>
+
+  <input
+    type="text"
+    placeholder="Enter Work Order No"
+    value={workOrderNo}
+    onChange={(e) => setWorkOrderNo(e.target.value)}
+    className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+      darkMode
+        ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+        : "bg-white/70 border-slate-200 text-slate-900"
+    }`}
+  />
+</div>
+<div>
+  <label
+    className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+      darkMode ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    Received From
+  </label>
+
+  <input
+    type="text"
+    placeholder="Enter Source Department / Area"
+    value={receivedFrom}
+    onChange={(e) => setReceivedFrom(e.target.value)}
+    className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+      darkMode
+        ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+        : "bg-white/70 border-slate-200 text-slate-900"
+    }`}
+  />
+</div>
 
     <div>
       <label className="block mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">
@@ -391,24 +477,72 @@ if (isEditing) {
       <option>Panel</option>
       </select>
     </div>
-    <div>
-      <label className="block mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">
-        Location
-      </label>
 
-    <input
-      type="text"
-      placeholder="Enter Location"
-      value={location}
-      onChange={(e) => setLocation(e.target.value)}
-      className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
-  darkMode
-    ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
-    : "bg-white/70 border-slate-200 text-slate-900"
-}`}
-    />
-    </div>
+<div className="md:col-span-2">
+  <label
+    className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+      darkMode ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    Equipment Details
+  </label>
 
+  <textarea
+    placeholder="Enter equipment specifications/details"
+    value={equipmentDetails}
+    onChange={(e) => setEquipmentDetails(e.target.value)}
+    rows="4"
+    className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border resize-none ${
+      darkMode
+        ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+        : "bg-white/70 border-slate-200 text-slate-900"
+    }`}
+  />
+</div>
+<div className="md:col-span-2">
+  <label
+    className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+      darkMode ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    Remark
+  </label>
+
+  <textarea
+    placeholder="Enter remarks"
+    value={remark}
+    onChange={(e) => setRemark(e.target.value)}
+    rows="3"
+    className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border resize-none ${
+      darkMode
+        ? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+        : "bg-white/70 border-slate-200 text-slate-900"
+    }`}
+  />
+</div>
+<div>
+  <label
+    className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+      darkMode ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    Current Bay
+  </label>
+
+  <select
+    value={currentBay}
+    onChange={(e) => setCurrentBay(e.target.value)}
+    className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+      darkMode
+        ? "bg-slate-700 border-slate-600 text-white"
+        : "bg-white/70 border-slate-200 text-slate-900"
+    }`}
+  >
+    <option>Received Bay</option>
+    <option>Overhauling Bay</option>
+    <option>Finished Bay</option>
+  </select>
+</div>
     <div>
       <label className="block mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">
         Status
@@ -424,9 +558,11 @@ if (isEditing) {
 }`}
     >
 
-        <option>Running</option>
-        <option>Under Repair</option>
-        <option>Standby</option>
+        <option>Dismantled</option>
+        <option>Received</option>
+        <option>Work Under Progress</option>
+        <option>Testing</option>
+        <option>Completed</option>
 
       </select>
     </div>
@@ -496,13 +632,14 @@ if (isEditing) {
       : "bg-slate-100 text-slate-700"
   }`}
 >
-
-        <th className="text-left p-3">ID</th>
-        <th className="text-left p-3">Equipment</th>
-        <th className="text-left p-3">Category</th>
-        <th className="text-left p-3">Location</th>
-        <th className="text-left p-3">Status</th>
-        <th className="text-left p-3">Action</th>
+      <th className="text-left p-3">WO No</th>
+      <th className="text-left p-3">Equipment</th>
+      <th className="text-left p-3">Type</th>
+      <th className="text-left p-3">Current Bay</th>
+      <th className="text-left p-3">Received Date</th>
+      <th className="text-left p-3">Received From</th>
+      <th className="text-left p-3">Status</th>
+      <th className="text-left p-3">Action</th>
 
       </tr>
 
@@ -515,7 +652,7 @@ if (isEditing) {
   )
   .map((item, index) => (
 
-  <tr
+<tr
   key={index}
   className={`border-b transition ${
   darkMode
@@ -524,13 +661,14 @@ if (isEditing) {
 }`}
 >
 
- <td
+<td
   className={`p-3 ${
     darkMode ? "text-slate-200" : "text-slate-700"
   }`}
 >
-  {item.id}
+  {item.workOrderNo}
 </td>
+
 <td
   className={`p-3 ${
     darkMode ? "text-slate-200" : "text-slate-700"
@@ -552,27 +690,44 @@ if (isEditing) {
     darkMode ? "text-slate-200" : "text-slate-700"
   }`}
 >
-  {item.location}
+  {item.currentBay}
 </td>
 
-    <td className="p-3">
+<td
+  className={`p-3 ${
+    darkMode ? "text-slate-200" : "text-slate-700"
+  }`}
+>
+  {item.receivedDate}
+</td>
+
+<td
+  className={`p-3 ${
+    darkMode ? "text-slate-200" : "text-slate-700"
+  }`}
+>
+  {item.receivedFrom}
+</td>
+<td className="p-3">
 
   <span
     className={`px-4 py-2 rounded-full text-white text-sm font-bold shadow-md tracking-wide
     ${
-      item.status === "Running"
-        ? "bg-green-500"
-        : item.status === "Under Repair"
+      item.status === "Dismantled"
         ? "bg-red-500"
-        : "bg-blue-500"
+        : item.status === "Work Under Progress"
+        ? "bg-yellow-500"
+        : item.status === "Testing"
+        ? "bg-blue-500"
+        : "bg-green-500"
     }`}
   >
     {item.status}
   </span>
 
 </td>
-
-    <td className="p-3">
+<td
+  className="p-3">
     <button
        onClick={() => handleEditEquipment(item, index)}
         className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 mr-2 font-semibold"
