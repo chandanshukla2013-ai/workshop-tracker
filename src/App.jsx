@@ -1,28 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "./firebase";
 
 import {
   collection,
-  addDoc
+  addDoc,
+  getDocs
 } from "firebase/firestore";
 
 function App() {
-const [equipmentList, setEquipmentList] = useState([
-  {
-    id: "MTR-001",
-    name: "110kW Pump Motor",
-    location: "1408 Pumping Station",
-    status: "Running"
-  },
-
-  {
-    id: "PMP-002",
-    name: "8CHR Pump",
-    location: "3-Pit Shaft",
-    status: "Under Repair"
-  }
-]);
-
+const [equipmentList, setEquipmentList] = useState([]);
 const [equipmentId, setEquipmentId] = useState("");
 const [equipmentName, setEquipmentName] = useState("");
 const [location, setLocation] = useState("");
@@ -31,6 +17,22 @@ const [category, setCategory] = useState("Motor");
 const [searchTerm, setSearchTerm] = useState("");
 const [editIndex, setEditIndex] = useState(null);
 const [isEditing, setIsEditing] = useState(false);
+const fetchEquipment = async () => {
+
+  const querySnapshot = await getDocs(
+    collection(db, "equipment")
+  );
+
+  const equipmentData = querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  setEquipmentList(equipmentData);
+};
+useEffect(() => {
+  fetchEquipment();
+}, []);
 const handleDeleteEquipment = (indexToDelete) => 
   {
     const updatedList = equipmentList.filter
