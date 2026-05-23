@@ -4,7 +4,9 @@ import { db } from "./firebase";
 import {
   collection,
   addDoc,
-  getDocs
+  getDocs,
+  deleteDoc,
+  doc
 } from "firebase/firestore";
 
 function App() {
@@ -24,23 +26,21 @@ const fetchEquipment = async () => {
   );
 
   const equipmentData = querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+  firebaseId: doc.id,
+  ...doc.data()
+}));
 
   setEquipmentList(equipmentData);
 };
 useEffect(() => {
   fetchEquipment();
 }, []);
-const handleDeleteEquipment = (indexToDelete) => 
-  {
-    const updatedList = equipmentList.filter
-    (
-    (_, index) => index !== indexToDelete
-    );
-    setEquipmentList(updatedList);
-  };
+const handleDeleteEquipment = async (idToDelete) => {
+
+  await deleteDoc(doc(db, "equipment", idToDelete));
+
+  fetchEquipment();
+};
 const handleEditEquipment = (item, index) => 
   {
 
@@ -364,7 +364,7 @@ const handleAddEquipment = async () => {
     </button>
 
       <button
-        onClick={() => handleDeleteEquipment(index)}
+        onClick={() => handleDeleteEquipment(item.firebaseId)}
         className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
       >
         Delete
