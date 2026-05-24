@@ -65,7 +65,13 @@ const [user, setUser] = useState(null);
 const [isGuest, setIsGuest] = useState(false);
 const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
-
+const [cartItems, setCartItems] = useState([]);
+const [requestDepartment, setRequestDepartment] = useState("");
+const [requestPurpose, setRequestPurpose] = useState("");
+const [requestPriority, setRequestPriority] = useState("Normal");
+const [requiredDate, setRequiredDate] = useState("");
+const [requestRemark, setRequestRemark] = useState("");
+const [requirementsList, setRequirementsList] = useState([]);
 const [authLoading, setAuthLoading] = useState(true);
 const fetchEquipment = async () => {
 const querySnapshot = await getDocs(collection(db, "equipment")
@@ -223,6 +229,8 @@ if (status === "Completed") {
   name: equipmentName,
   category: category,
   status: status,
+  reserved: false,
+  reservedBy: "",
   currentBay: updatedBay,
   receivedDate: receivedDate,
   workOrderNo: workOrderNo,
@@ -607,6 +615,95 @@ if (!user && !isGuest) {
 
   );
 }
+const handleSubmitRequirement = () => {
+
+  if (
+    cartItems.length === 0 ||
+    requestDepartment === "" ||
+    requestPurpose === ""
+  ) {
+
+    alert("Please complete all required fields.");
+
+    return;
+
+  }
+
+  const newRequirement = {
+
+    reqNo: `REQ-${requirementsList.length + 1}`,
+
+    id: Date.now(),
+
+    department: requestDepartment,
+
+    purpose: requestPurpose,
+
+    priority: requestPriority,
+
+    requiredDate: requiredDate,
+
+    remark: requestRemark,
+
+    items: cartItems,
+
+    status: "Pending",
+
+    expectedDeliveryDate: ""
+
+  };
+
+  setRequirementsList([
+    ...requirementsList,
+    newRequirement
+  ]);
+setEquipmentList(
+
+  equipmentList.map((equipment) => {
+
+    const selectedItem = cartItems.find(
+
+      (cartItem) =>
+        cartItem.id === equipment.id
+
+    );
+
+    if (selectedItem) {
+
+      return {
+
+        ...equipment,
+
+        reserved: true,
+
+        reservedBy: newRequirement.reqNo
+
+      };
+
+    }
+
+    return equipment;
+
+  })
+
+);
+  // Clear form after submit
+
+  setCartItems([]);
+
+  setRequestDepartment("");
+
+  setRequestPurpose("");
+
+  setRequestPriority("Normal");
+
+  setRequiredDate("");
+
+  setRequestRemark("");
+
+  alert("Requirement Submitted Successfully!");
+
+};
 return (
 <>
 <Toaster position="top-right" />
@@ -648,6 +745,16 @@ darkMode
     📦 Equipment
   </li>
 )}
+    <li
+    onClick={() => setActiveMenu("Requirements")}
+    className={`p-3 rounded-lg cursor-pointer transition duration-300 font-semibold ${
+      activeMenu === "Requirements"
+        ? "bg-blue-700 shadow-lg"
+        : "hover:bg-blue-700"
+    }`}
+  >
+     🛒 Requirements
+  </li>
 
   <li
     onClick={() => setActiveMenu("Reports")}
@@ -1294,6 +1401,690 @@ className="mt-8 bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-8 py-
 
 
 {/* Equipment Table */}
+{activeMenu === "Requirements" && (
+
+  <div>
+
+    <h2
+      className={`text-3xl font-bold mb-6 ${
+        darkMode ? "text-white" : "text-slate-800"
+      }`}
+    >
+      🛒 Requirements Management
+    </h2>
+
+    <div
+      className={`p-8 rounded-3xl shadow-xl ${
+        darkMode
+          ? "bg-slate-800"
+          : "bg-white/80 backdrop-blur-lg"
+      }`}
+    >
+
+      <div className="overflow-x-auto">
+
+  <table className="w-full border-collapse">
+
+    <thead>
+
+      <tr
+        className={`${
+          darkMode
+            ? "bg-slate-700 text-white"
+            : "bg-slate-200 text-slate-800"
+        }`}
+      >
+
+        <th className="p-3 text-left">
+          Equipment ID
+        </th>
+
+        <th className="p-3 text-left">
+          Equipment Name
+        </th>
+
+        <th className="p-3 text-left">
+          Received From
+        </th>
+
+        <th className="p-3 text-left">
+          Category
+        </th>
+
+        <th className="p-3 text-left">
+          Status
+        </th>
+
+        <th className="p-3 text-left">
+          Action
+        </th>
+
+      </tr>
+
+    </thead>
+
+    <tbody>
+
+      {equipmentList
+        .filter(
+          (item) =>
+            item.currentBay === "Finished Bay"
+        )
+        .map((item, index) => (
+
+          <tr
+            key={index}
+            className={`border-b ${
+              darkMode
+                ? "border-slate-700"
+                : "border-slate-200"
+            }`}
+          >
+
+            <td className="p-3">
+              {item.id}
+            </td>
+
+            <td className="p-3">
+              {item.name}
+            </td>
+
+            <td className="p-3">
+              {item.receivedFrom}
+            </td>
+
+            <td className="p-3">
+              {item.category}
+            </td>
+
+            <td className="p-3">
+              {item.status}
+            </td>
+            <td className="p-3">
+
+{item.reserved ? (
+
+  <span className="bg-red-500 text-white px-4 py-2 rounded-xl font-semibold">
+
+    Reserved
+
+  </span>
+
+) : (
+
+  <button
+
+    onClick={() => {
+
+      const alreadyExists = cartItems.find(
+        (cartItem) => cartItem.id === item.id
+      );
+
+      if (!alreadyExists) {
+
+        setCartItems([...cartItems, item]);
+
+      }
+
+    }}
+
+    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition duration-300"
+  >
+
+    Add to Cart
+
+  </button>
+
+)}
+
+</td>
+          </tr>
+
+      ))}
+
+    </tbody>
+
+  </table>
+
+</div>
+<div
+  className={`mt-10 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-700"
+      : "bg-slate-100"
+  }`}
+>
+
+  <h3 className="text-2xl font-bold mb-6">
+
+    🛒 Selected Requirements
+
+  </h3>
+
+  {cartItems.length === 0 ? (
+
+    <p>No equipment selected.</p>
+
+  ) : (
+
+    <table className="w-full border-collapse">
+
+      <thead>
+
+        <tr
+          className={`${
+            darkMode
+              ? "bg-slate-800 text-white"
+              : "bg-slate-300 text-slate-800"
+          }`}
+        >
+
+          <th className="p-3 text-left">
+            Equipment ID
+          </th>
+
+          <th className="p-3 text-left">
+            Equipment Name
+          </th>
+
+          <th className="p-3 text-left">
+            Category
+          </th>
+
+          <th className="p-3 text-left">
+          Action
+          </th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {cartItems.map((item, index) => (
+
+          <tr
+            key={index}
+            className={`border-b ${
+              darkMode
+                ? "border-slate-600"
+                : "border-slate-300"
+            }`}
+          >
+
+            <td className="p-3">
+              {item.id}
+            </td>
+
+            <td className="p-3">
+              {item.name}
+            </td>
+
+            <td className="p-3">
+              {item.category}
+            </td>
+<td className="p-3">
+
+  <button
+
+    onClick={() =>
+      setCartItems(
+        cartItems.filter(
+          (cartItem) =>
+            cartItem.id !== item.id
+        )
+      )
+    }
+
+    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-semibold transition duration-300"
+  >
+
+    Remove
+
+  </button>
+
+</td>
+          </tr>
+
+        ))}
+
+      </tbody>
+
+    </table>
+
+  )}
+</div>
+<div
+  className={`mt-10 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-700"
+      : "bg-slate-100"
+  }`}
+>
+
+  <h3 className="text-2xl font-bold mb-6">
+
+    📝 Submit Requirement
+
+  </h3>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <div>
+
+      <label className="font-semibold">
+        Department
+      </label>
+
+      <input
+        type="text"
+        value={requestDepartment}
+        onChange={(e) =>
+          setRequestDepartment(e.target.value)
+        }
+        className="w-full p-3 rounded-xl border mt-2 text-black"
+        placeholder="Enter Department Name"
+      />
+
+    </div>
+
+    <div>
+
+      <label className="font-semibold">
+        Purpose
+      </label>
+
+      <input
+        type="text"
+        value={requestPurpose}
+        onChange={(e) =>
+          setRequestPurpose(e.target.value)
+        }
+        className="w-full p-3 rounded-xl border mt-2 text-black"
+        placeholder="Purpose of Requirement"
+      />
+
+    </div>
+
+    <div>
+
+      <label className="font-semibold">
+        Priority
+      </label>
+
+      <select
+        value={requestPriority}
+        onChange={(e) =>
+          setRequestPriority(e.target.value)
+        }
+        className="w-full p-3 rounded-xl border mt-2 text-black"
+      >
+
+        <option>Normal</option>
+
+        <option>Urgent</option>
+
+      </select>
+
+    </div>
+
+    <div>
+
+      <label className="font-semibold">
+        Required Date
+      </label>
+
+      <input
+        type="date"
+        value={requiredDate}
+        onChange={(e) =>
+          setRequiredDate(e.target.value)
+        }
+        className="w-full p-3 rounded-xl border mt-2 text-black"
+      />
+
+    </div>
+
+  </div>
+
+  <div className="mt-6">
+
+    <label className="font-semibold">
+      Remarks
+    </label>
+
+    <textarea
+      value={requestRemark}
+      onChange={(e) =>
+        setRequestRemark(e.target.value)
+      }
+      className="w-full p-3 rounded-xl border mt-2 text-black"
+      rows="4"
+      placeholder="Additional remarks..."
+    />
+
+  </div>
+<div className="mt-6">
+
+  <button
+
+    onClick={handleSubmitRequirement}
+
+    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-bold transition duration-300"
+  >
+
+    Submit Requirement
+
+  </button>
+
+</div>
+</div>
+<div
+  className={`mt-10 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-700"
+      : "bg-slate-100"
+  }`}
+>
+
+  <h3 className="text-2xl font-bold mb-6">
+
+    📋 Submitted Requirements
+
+  </h3>
+
+  {requirementsList.length === 0 ? (
+
+    <p>No requirements submitted yet.</p>
+
+  ) : (
+
+    <table className="w-full border-collapse">
+
+      <thead>
+
+        <tr
+          className={`${
+            darkMode
+              ? "bg-slate-800 text-white"
+              : "bg-slate-300 text-slate-800"
+          }`}
+        >
+          <th className="p-3 text-left">
+          Req No
+          </th>
+
+          <th className="p-3 text-left">
+            Department
+          </th>
+
+          <th className="p-3 text-left">
+            Equipment
+          </th>
+
+          <th className="p-3 text-left">
+            Purpose
+          </th>
+
+          <th className="p-3 text-left">
+            Priority
+          </th>
+
+          <th className="p-3 text-left">
+            Status
+          </th>
+
+          <th className="p-3 text-left">
+            Expected Delivery
+          </th>
+
+          <th className="p-3 text-left">
+          Action
+          </th>
+
+          <th className="p-3 text-left">
+          Approval
+          </th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {requirementsList.map((req, index) => (
+
+          <tr
+            key={index}
+            className={`border-b ${
+              darkMode
+                ? "border-slate-600"
+                : "border-slate-300"
+            }`}
+          >
+            <td className="p-3">
+              {req.reqNo}
+            </td>
+
+            <td className="p-3">
+              {req.department}
+            </td>
+
+            <td className="p-3">
+              {req.items.map((item) => item.name).join(", ")}
+            </td>
+
+            <td className="p-3">
+              {req.purpose}
+            </td>
+
+            <td className="p-3">
+              {req.priority}
+            </td>
+
+            <td className="p-3">
+              {req.status}
+            </td>
+
+           <td className="p-3">
+
+  <input
+
+    type="date"
+
+    value={req.expectedDeliveryDate}
+
+    onChange={(e) => {
+
+      setRequirementsList(
+
+        requirementsList.map((r) =>
+
+          r.id === req.id
+
+            ? {
+                ...r,
+                expectedDeliveryDate:
+                  e.target.value
+              }
+
+            : r
+
+        )
+
+      );
+
+    }}
+
+    className="p-2 rounded-lg border text-black"
+
+  />
+
+</td>
+
+            <td className="p-3">
+
+  <button
+
+onClick={() => {
+
+  const details = `
+
+Department:
+${req.department}
+
+Purpose:
+${req.purpose}
+
+Priority:
+${req.priority}
+
+Required Date:
+${req.requiredDate}
+Status:
+${req.status}
+Remarks:
+${req.remark || "N/A"}
+Requested Equipment:
+${req.items
+  .map(
+    (item) =>
+`• ${item.name}
+Category: ${item.category}
+Equipment ID: ${item.id}
+Received From: ${item.receivedFrom}
+`
+)
+  .join("\n")}
+
+`;
+
+  alert(details);
+
+}}
+
+    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition duration-300"
+  >
+
+    View Details
+
+  </button>
+
+</td>
+{!isGuest && req.status === "Pending" && (
+<td className="p-3 flex gap-3">
+
+  <button
+
+    onClick={() => {
+
+      setRequirementsList(
+
+        requirementsList.map((r) =>
+
+          r.id === req.id
+
+            ? {
+                ...r,
+                status: "Approved"
+              }
+
+            : r
+
+        )
+
+      );
+
+    }}
+
+    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold"
+  >
+
+    Approve
+
+  </button>
+
+  <button
+
+    onClick={() => {
+
+  // Update requirement status
+
+  setRequirementsList(
+
+    requirementsList.map((r) =>
+
+      r.id === req.id
+
+        ? {
+            ...r,
+            status: "Rejected"
+          }
+
+        : r
+
+    )
+
+  );
+
+  // Release reserved equipment
+
+  setEquipmentList((prevEquipmentList) =>
+
+  prevEquipmentList.map((equipment) => {
+
+    const rejectedItem = req.items.find(
+
+      (item) =>
+        item.id === equipment.id
+
+    );
+
+    if (rejectedItem) {
+
+      return {
+
+        ...equipment,
+
+        reserved: false,
+
+        reservedBy: ""
+
+      };
+
+    }
+
+    return equipment;
+
+  })
+
+);
+
+}}
+
+    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-semibold"
+  >
+
+    Reject
+
+  </button>
+
+</td>
+)}
+          </tr>
+
+        ))}
+
+      </tbody>
+
+    </table>
+
+  )}
+
+</div>
+</div>
+</div>
+
+)}
 {activeMenu === "Reports" && (
 <div
 className={`backdrop-blur-lg mt-10 p-8 rounded-3xl shadow-2xl border ${
