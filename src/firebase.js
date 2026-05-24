@@ -1,16 +1,29 @@
 import { initializeApp } from "firebase/app";
+
 import { getAuth } from "firebase/auth";
+
 import { getFirestore } from "firebase/firestore";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCGOeYS9VS8zSIDHTuGx0HVGtFC61CBeh8",
-  authDomain: "workshop-tracker-24b18.firebaseapp.com",
-  projectId: "workshop-tracker-24b18",
-  storageBucket: "workshop-tracker-24b18.firebasestorage.app",
-  messagingSenderId: "310131742653",
-  appId: "1:310131742653:web:2f1f9d864fb591453064d4",
-  measurementId: "G-5Z8KM5NQ5K"
+
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+
 };
+
 const app = initializeApp(firebaseConfig);
+
 export const auth = getAuth(app);
+
 const db = getFirestore(app);
+
 export { db };
