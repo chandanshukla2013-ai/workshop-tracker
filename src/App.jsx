@@ -1,10 +1,23 @@
+import { auth } from "./firebase";
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "firebase/auth";
 import {
   PieChart,
   Pie,
   Cell,
   Tooltip,
   ResponsiveContainer,
-  Legend
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line
 } from "recharts";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -40,6 +53,7 @@ const [receivedFrom, setReceivedFrom] = useState("");
 const [equipmentDetails, setEquipmentDetails] = useState("");
 const [remark, setRemark] = useState("");
 const [tentativeDate, setTentativeDate] = useState("");
+const [completionDate, setCompletionDate] = useState("");
 const [searchTerm, setSearchTerm] = useState("");
 const [editIndex, setEditIndex] = useState(null);
 const [isEditing, setIsEditing] = useState(false);
@@ -47,6 +61,12 @@ const [loading, setLoading] = useState(false);
 const [darkMode, setDarkMode] = useState(false);
 const [activeBay, setActiveBay] = useState("All");
 const [activeMenu, setActiveMenu] = useState("Dashboard");
+const [user, setUser] = useState(null);
+const [isGuest, setIsGuest] = useState(false);
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+
+const [authLoading, setAuthLoading] = useState(true);
 const fetchEquipment = async () => {
 const querySnapshot = await getDocs(collection(db, "equipment")
  );
@@ -57,7 +77,24 @@ const equipmentData = querySnapshot.docs.map((doc) => ({
 setEquipmentList(equipmentData);
 };
 useEffect(() => {
-  fetchEquipment();
+
+  if (user || isGuest) {
+    fetchEquipment();
+  }
+
+}, [user, isGuest]);
+useEffect(() => {
+
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+
+    setUser(currentUser);
+
+    setAuthLoading(false);
+
+  });
+
+  return () => unsubscribe();
+
 }, []);
 const exportToExcel = () => {
 const exportData = equipmentList.map((item) => ({
@@ -113,18 +150,37 @@ if (!confirmDelete) {
   fetchEquipment();
   toast.success("Equipment deleted successfully");
 };
-const handleEditEquipment = (item, index) => 
-  {
+const handleEditEquipment = (item, index) => {
 
-    setEquipmentId(item.id);
-    setEquipmentName(item.name);
-    setCategory(item.category);
-    setLocation(item.location);
-    setStatus(item.status);
+  setEquipmentId(item.id);
 
-    setEditIndex(index);
-    setIsEditing(true);
-  };
+  setEquipmentName(item.name);
+
+  setReceivedDate(item.receivedDate || "");
+
+  setWorkOrderNo(item.workOrderNo || "");
+
+  setReceivedFrom(item.receivedFrom || "");
+
+  setEquipmentDetails(item.equipmentDetails || "");
+
+  setTentativeDate(item.tentativeDate || "");
+
+  setRemark(item.remark || "");
+
+  setCurrentBay(item.currentBay || "Received Bay");
+
+  setCategory(item.category);
+
+  setStatus(item.status);
+
+  setActiveMenu("Equipment");
+
+  setEditIndex(index);
+
+  setIsEditing(true);
+
+};
 
 const handleAddEquipment = async () => {
   setLoading(true);
@@ -141,6 +197,7 @@ if (!equipmentName.trim()) {
 }
 
 let updatedBay = "";
+let finalCompletionDate = completionDate;
 
 if (status === "Received") {
   updatedBay = "Received Bay";
@@ -155,6 +212,12 @@ else if (
 else if (status === "Completed") {
   updatedBay = "Finished Bay";
 }
+if (status === "Completed") {
+
+  finalCompletionDate =
+    new Date().toISOString().split("T")[0];
+
+}
  const newEquipment = {
   id: equipmentId,
   name: equipmentName,
@@ -166,7 +229,8 @@ else if (status === "Completed") {
   receivedFrom: receivedFrom,
   equipmentDetails: equipmentDetails,
   remark: remark,
-  tentativeDate: tentativeDate
+  tentativeDate: tentativeDate,
+  completionDate: finalCompletionDate
 };
 if (isEditing) {
 
@@ -256,11 +320,298 @@ const COLORS = [
   "#8b5cf6",
   "#22c55e"
 ];
+const motorStatusData = [
+
+  {
+    name: "Received",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Received"
+    ).length
+  },
+
+  {
+    name: "Dismantled",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Dismantled"
+    ).length
+  },
+
+  {
+    name: "WIP",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Work Under Progress"
+    ).length
+  },
+
+  {
+    name: "Testing",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Testing"
+    ).length
+  },
+
+  {
+    name: "Completed",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Completed"
+    ).length
+  }
+
+];
+const pumpStatusData = [
+
+  {
+    name: "Received",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Received"
+    ).length
+  },
+
+  {
+    name: "Dismantled",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Dismantled"
+    ).length
+  },
+
+  {
+    name: "WIP",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Work Under Progress"
+    ).length
+  },
+
+  {
+    name: "Testing",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Testing"
+    ).length
+  },
+
+  {
+    name: "Completed",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Completed"
+    ).length
+  }
+
+];
+const departmentData = Object.values(
+
+  equipmentList.reduce((acc, item) => {
+
+    const dept = item.receivedFrom || "Unknown";
+
+    if (!acc[dept]) {
+
+      acc[dept] = {
+        department: dept,
+        count: 0
+      };
+
+    }
+
+    acc[dept].count += 1;
+
+    return acc;
+
+  }, {})
+
+);
+const monthlyTrendData = [];
+
+const monthlyMap = {};
+
+equipmentList.forEach((item) => {
+
+  // Received Data
+
+  if (item.receivedDate) {
+
+    const receivedMonth = new Date(
+      item.receivedDate
+    ).toLocaleString("default", {
+      month: "short"
+    });
+
+    if (!monthlyMap[receivedMonth]) {
+
+      monthlyMap[receivedMonth] = {
+        month: receivedMonth,
+        received: 0,
+        completed: 0
+      };
+
+    }
+
+    monthlyMap[receivedMonth].received += 1;
+
+  }
+
+  // Completed Data
+
+  if (item.completionDate) {
+
+    const completedMonth = new Date(
+      item.completionDate
+    ).toLocaleString("default", {
+      month: "short"
+    });
+
+    if (!monthlyMap[completedMonth]) {
+
+      monthlyMap[completedMonth] = {
+        month: completedMonth,
+        received: 0,
+        completed: 0
+      };
+
+    }
+
+    monthlyMap[completedMonth].completed += 1;
+
+  }
+
+});
+
+Object.values(monthlyMap).forEach((item) => {
+  monthlyTrendData.push(item);
+});
+const handleLogin = async () => {
+
+  try {
+
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    toast.success("Login successful");
+
+  } catch (error) {
+
+    toast.error("Invalid email or password");
+
+  }
+};
+const handleGuestLogin = async () => {
+
+  try {
+
+    await signInWithEmailAndPassword(
+      auth,
+      "guest@workshop.com",
+      "guest123"
+    );
+
+    setIsGuest(true);
+
+    toast.success("Guest login successful");
+
+  } catch (error) {
+
+    toast.error("Guest login failed");
+
+  }
+
+};
+const handleLogout = async () => {
+
+  try {
+
+    await signOut(auth);
+
+    setIsGuest(false);
+
+    toast.success("Logged out successfully");
+
+  } catch (error) {
+
+    toast.error("Logout failed");
+
+  }
+
+};
+if (authLoading) {
+  return (
+    <div className="h-screen flex items-center justify-center text-2xl font-bold">
+      Loading...
+    </div>
+  );
+}
+
+if (!user && !isGuest) {
+  return (
+
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-900">
+
+      <div className="bg-white p-10 rounded-3xl shadow-2xl w-[400px]">
+
+        <h2 className="text-4xl font-extrabold text-center text-slate-800 mb-8">
+          Workshop Login
+        </h2>
+
+        <input
+          type="email"
+          placeholder="Enter Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-4 border border-slate-300 rounded-2xl mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="password"
+          placeholder="Enter Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-4 border border-slate-300 rounded-2xl mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <button
+          onClick={handleLogin}
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 rounded-2xl font-bold text-lg hover:scale-105 transition duration-300 shadow-xl"
+        >
+          Login
+        </button>
+
+        <button
+         onClick={handleGuestLogin}
+         className="w-full mt-4 bg-slate-700 text-white py-4 rounded-2xl font-bold text-lg hover:scale-105 transition duration-300 shadow-xl"
+        >
+         Login as Guest
+        </button>
+      </div>
+
+    </div>
+
+  );
+}
 return (
 <>
 <Toaster position="top-right" />
 <div
-className={`flex min-h-screen transition duration-500 ${
+className={`flex flex-col lg:flex-row min-h-screen transition duration-500 ${
 darkMode
 ? "bg-slate-900 text-white"
 : "bg-gradient-to-br from-slate-100 to-blue-100 text-slate-900"
@@ -268,7 +619,7 @@ darkMode
 >
 
 {/* Sidebar */}
-<div className="w-72 bg-slate-900 text-white p-6 shadow-2xl">
+<div className="w-full lg:w-72 bg-slate-900 text-white p-6 shadow-2xl">
 <h1 className="text-3xl font-extrabold mb-12 tracking-wide text-center">
 ⚙ Workshop Tracker
 </h1>
@@ -285,6 +636,7 @@ darkMode
     📊 Dashboard
   </li>
 
+{!isGuest && (
   <li
     onClick={() => setActiveMenu("Equipment")}
     className={`p-3 rounded-lg cursor-pointer transition duration-300 font-semibold ${
@@ -295,6 +647,7 @@ darkMode
   >
     📦 Equipment
   </li>
+)}
 
   <li
     onClick={() => setActiveMenu("Reports")}
@@ -309,7 +662,7 @@ darkMode
 </ul>
 </div>
 {/* Main Content */}
-<div className="flex-1 p-10 overflow-auto">
+<div className="flex-1 p-4 lg:p-10 overflow-auto">
 <div className="flex justify-between items-center mb-10">
 <div>
 <h2 className={`text-4xl font-extrabold ${
@@ -342,19 +695,31 @@ className="bg-slate-800 text-white px-5 py-3 rounded-2xl shadow-lg hover:scale-1
 >
 {darkMode ? "☀ Light" : "🌙 Dark"}
 </button>
-<div className="bg-white/70 backdrop-blur-lg px-5 py-3 rounded-2xl shadow-md">
-<p className="text-sm text-slate-500">
-Logged in as
-</p>
-<h4 className="font-bold text-slate-700">
-Admin User
-</h4>
+<div className="bg-white/70 backdrop-blur-lg px-5 py-3 rounded-2xl shadow-md flex items-center gap-4">
+
+  <div>
+    <p className="text-sm text-slate-500">
+      Logged in as
+    </p>
+
+    <h4 className="font-bold text-slate-700">
+      {user?.email}
+    </h4>
+  </div>
+
+  <button
+    onClick={handleLogout}
+    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold transition duration-300"
+  >
+    Logout
+  </button>
+
 </div>
 </div>
 </div>
 {activeMenu === "Dashboard" && (
   <>
-<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-8 mb-10">
+<div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 lg:gap-8 mb-10">
 <div
 className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
 darkMode
@@ -448,59 +813,209 @@ item.status !== "Completed"
 </div>
 </div>
 {/* Cards */}
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-6">
+
+  {/* Motor Analytics */}
+
+  <div
+    className={`p-6 rounded-3xl shadow-xl ${
+      darkMode
+        ? "bg-slate-800"
+        : "bg-white/80 backdrop-blur-lg"
+    }`}
+  >
+
+    <h2
+      className={`text-2xl font-bold mb-6 ${
+        darkMode ? "text-white" : "text-slate-800"
+      }`}
+    >
+      ⚙ Motor Workflow Analytics
+    </h2>
+
+    <div className="w-full h-[240px]">
+
+      <ResponsiveContainer width="100%" height="100%">
+
+        <BarChart data={motorStatusData}>
+
+          <CartesianGrid strokeDasharray="3 3" />
+
+          <XAxis dataKey="name" />
+
+          <YAxis />
+
+          <Tooltip />
+
+          <Legend />
+
+          <Bar
+            dataKey="value"
+            fill="#3b82f6"
+            radius={[10, 10, 0, 0]}
+          />
+
+        </BarChart>
+
+      </ResponsiveContainer>
+
+    </div>
+
+  </div>
+{/* Pump Analytics */}
+
 <div
-  className={`mt-10 p-6 rounded-3xl shadow-xl ${
+  className={`p-6 rounded-3xl shadow-xl ${
     darkMode
       ? "bg-slate-800"
       : "bg-white/80 backdrop-blur-lg"
   }`}
 >
+
   <h2
     className={`text-2xl font-bold mb-6 ${
       darkMode ? "text-white" : "text-slate-800"
     }`}
   >
-    🛠 Workshop Status Analytics
+    🛠 Pump Workflow Analytics
   </h2>
 
-  <div className="w-full h-[400px]">
+  <div className="w-full h-[240px]">
 
     <ResponsiveContainer width="100%" height="100%">
 
-      <PieChart>
+      <BarChart data={pumpStatusData}>
 
-        <Pie
-          data={statusData}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          outerRadius={140}
-          label
-        >
+        <CartesianGrid strokeDasharray="3 3" />
 
-          {statusData.map((entry, index) => (
+        <XAxis dataKey="name" />
 
-            <Cell
-              key={`cell-${index}`}
-              fill={COLORS[index % COLORS.length]}
-            />
-
-          ))}
-
-        </Pie>
+        <YAxis />
 
         <Tooltip />
 
         <Legend />
 
-      </PieChart>
+        <Bar
+          dataKey="value"
+          fill="#22c55e"
+          radius={[10, 10, 0, 0]}
+        />
+
+      </BarChart>
 
     </ResponsiveContainer>
+
   </div>
+
+</div>
+</div>
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-6">
+{/* Department Analytics */}
+
+<div
+  className={`mt-6 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-800"
+      : "bg-white/80 backdrop-blur-lg"
+  }`}
+>
+
+  <h2
+    className={`text-2xl font-bold mb-6 ${
+      darkMode ? "text-white" : "text-slate-800"
+    }`}
+  >
+    🏢 Department-wise Equipment Received
+  </h2>
+
+  <div className="w-full h-[240px]">
+
+    <ResponsiveContainer width="100%" height="100%">
+
+      <LineChart data={departmentData}>
+
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis dataKey="department" />
+
+        <YAxis />
+
+        <Tooltip />
+
+        <Legend />
+
+        <Line
+          type="monotone"
+          dataKey="count"
+          stroke="#f59e0b"
+          strokeWidth={4}
+        />
+
+      </LineChart>
+
+    </ResponsiveContainer>
+
+  </div>
+
+</div>
+
+{/* Monthly Trend Analytics */}
+
+<div
+  className={`mt-6 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-800"
+      : "bg-white/80 backdrop-blur-lg"
+  }`}
+>
+
+  <h2
+    className={`text-2xl font-bold mb-6 ${
+      darkMode ? "text-white" : "text-slate-800"
+    }`}
+  >
+    📅 Monthly Equipment Trend
+  </h2>
+
+  <div className="w-full h-[240px]">
+
+    <ResponsiveContainer width="100%" height="100%">
+
+      <BarChart data={monthlyTrendData}>
+
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis dataKey="month" />
+
+        <YAxis />
+
+        <Tooltip />
+
+        <Legend />
+
+        <Bar
+          dataKey="received"
+          fill="#3b82f6"
+          radius={[8, 8, 0, 0]}
+        />
+
+        <Bar
+          dataKey="completed"
+          fill="#22c55e"
+          radius={[8, 8, 0, 0]}
+        />
+
+      </BarChart>
+
+    </ResponsiveContainer>
+
+  </div>
+
+</div>
 </div>
  </>
-  )}
+)}
 
 {/* Add Equipment Form */}
 {activeMenu === "Equipment" && (
@@ -738,8 +1253,42 @@ darkMode
 onClick={handleAddEquipment}
 className="mt-8 bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-8 py-4 rounded-2xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 font-bold tracking-wide"
 >
-{loading ? "Saving..." : "Save Equipment"}
+{
+  loading
+    ? "Saving..."
+    : isEditing
+    ? "Update Equipment"
+    : "Save Equipment"
+}
 </button>
+{isEditing && (
+  <button
+    onClick={() => {
+
+      setIsEditing(false);
+      setActiveMenu("Reports");
+      setEditIndex(null);
+
+      setEquipmentId("");
+      setEquipmentName("");
+      setCategory("Motor");
+
+      setReceivedDate("");
+      setWorkOrderNo("");
+      setReceivedFrom("");
+      setEquipmentDetails("");
+      setRemark("");
+      setTentativeDate("");
+
+      setStatus("Received");
+      setCurrentBay("Received Bay");
+
+    }}
+    className="mt-4 ml-4 bg-slate-500 hover:bg-slate-600 text-white px-8 py-4 rounded-2xl shadow-lg transition duration-300 font-bold"
+  >
+    Cancel Edit
+  </button>
+)}
 </div>
 )}
 
@@ -821,6 +1370,7 @@ className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 r
 </button>
 </div>
 </div>
+<div className="overflow-x-auto">
 <table className="w-full border-collapse">
 <thead>
 <tr
@@ -838,7 +1388,11 @@ darkMode
 <th className="text-left p-3">Received From</th>
 <th className="text-left p-3">Tentative Date</th>
 <th className="text-left p-3">Status</th>
-<th className="text-left p-3">Action</th>
+{!isGuest && (
+  <th className="text-left p-3">
+    Action
+  </th>
+)}
 </tr>
 </thead>
 <tbody>
@@ -926,25 +1480,30 @@ item.status === "Dismantled"
 {item.status}
 </span>
 </td>
-<td
-className="p-3">
-<button
-onClick={() => handleEditEquipment(item, index)}
-className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 mr-2 font-semibold"
->
-Edit
-</button>
-<button
-onClick={() => handleDeleteEquipment(item.firebaseId)}
-className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 font-semibold"
->
-Delete
-</button>
-</td>
+{!isGuest && (
+  <td className="p-3">
+
+    <button
+      onClick={() => handleEditEquipment(item, index)}
+      className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 mr-2 font-semibold"
+    >
+      Edit
+    </button>
+
+    <button
+      onClick={() => handleDeleteEquipment(item.firebaseId)}
+      className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 font-semibold"
+    >
+      Delete
+    </button>
+
+  </td>
+)}
 </tr>
 ))}
 </tbody>
 </table>
+</div>
 </div>
 )}
 </div>
