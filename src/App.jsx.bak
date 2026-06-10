@@ -1,0 +1,3521 @@
+import {
+  auth,
+  db,
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  doc,
+  setDoc
+} from "./firebase";
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "firebase/auth";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line
+} from "recharts";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import toast, { Toaster } from "react-hot-toast";
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Wrench,
+  ClipboardList,
+  FileText
+} from "lucide-react";
+import { useState, useEffect } from "react";
+const equipmentCategories = [
+
+  "Motor",
+
+  "Pump",
+
+  "Transformer",
+
+  "Panels",
+
+  "Belt Materials",
+
+  "Skat Materials",
+
+  "Fabrication Items",
+
+  "Others"
+
+];
+
+const pumpTypes = [
+
+  "6L3 Pump",
+
+  "T-III,2CHR",
+
+  "T-III,3CHR",
+
+  "T-III,5CHR",
+
+  "T-III,6CHR",
+
+  "T-III,7CHR",
+
+  "T-III,8CHR",
+
+  "T-III,9CHR",
+
+  "T-III,10CHR",
+
+  "T-II,5CHR",
+
+  "T-II,6CHR",
+
+  "T-II,9CHR",
+
+  "T-IIA,3CHR",
+
+  "T-IIA,5CHR",
+
+  "T-IIA,7CHR"
+
+];
+
+const motorTypes = [
+
+  "75kW Motor",
+
+  "110kW Motor",
+
+  "200kW Motor",
+
+  "320kW Motor",
+
+  "400kW Motor"
+
+];
+
+const transformerTypes = [
+
+  "500kVA",
+
+  "1MVA",
+
+  "2MVA",
+
+  "5MVA",
+
+  "10MVA"
+
+];
+
+const beltMaterialTypes = [
+
+  "Gearbox",
+
+  "Pulley",
+
+  "Takeup Winch"
+
+];
+
+const skatMaterialTypes = [
+
+  "Gearbox",
+
+  "Pan",
+
+  "Chain"
+
+];
+
+const fabricationTypes = [
+
+  "Cutting & Welding",
+
+  "Lathe Machine Work"
+
+];
+
+const receivedFromList = [
+
+  "Sijua Colliery",
+
+  "Bhelatand Colliery",
+
+  "Jamadoba Colliery",
+
+  "Digwadih Colliery",
+
+  "6&7 Pit Colliery",
+
+  "JCPP",
+
+  "BCPP",
+
+  "WTP-Sijua",
+
+  "WTP-Jamadoba",
+
+  "TMD-Sijua",
+
+  "TMD-Jamadoba",
+
+  "RS-Sijua",
+
+  "RS-Jamadoba",
+
+  "Workshop",
+
+  "Store"
+
+];
+
+const bayList = [
+
+  "Received Bay",
+
+  "Overhauling Bay",
+
+  "Finished Bay",
+
+  "Fabrication Yard"
+
+];
+
+const statusList = [
+
+  "Received",
+
+  "Work Under Progress",
+
+  "Dismantling",
+
+  "Overhauling",
+
+  "Sent for Repair to Other Party",
+
+  "Discarded",
+
+  "Specification Change",
+
+  "Completed"
+
+];
+const installedPumpData = [
+
+  {
+    type: "6L3 Pump",
+    installedQty: 14
+  },
+
+  {
+    type: "T-III,3CHR",
+    installedQty: 7
+  },
+
+  {
+    type: "T-III,2CHR",
+    installedQty: 5
+  },
+
+  {
+    type: "T-III,10CHR",
+    installedQty: 5
+  },
+
+  {
+    type: "T-III,9CHR",
+    installedQty: 4
+  },
+
+  {
+    type: "T-III,7CHR",
+    installedQty: 3
+  },
+
+  {
+    type: "T-III,5CHR",
+    installedQty: 3
+  },
+
+  {
+    type: "T-III,8CHR",
+    installedQty: 3
+  },
+
+  {
+    type: "T-II,3CHR",
+    installedQty: 3
+  },
+
+  {
+    type: "T-IIA,3CHR",
+    installedQty: 1
+  },
+
+  {
+    type: "T-IIA,5CHR",
+    installedQty: 1
+  },
+
+  {
+    type: "T-III,6CHR",
+    installedQty: 1
+  },
+
+  {
+    type: "T-IIA,7CHR",
+    installedQty: 1
+  },
+
+  {
+    type: "T-II,5CHR",
+    installedQty: 1
+  },
+
+  {
+    type: "T-II,9CHR",
+    installedQty: 1
+  },
+
+  {
+    type: "T-I,6CHR",
+    installedQty: 1
+  }
+
+];
+
+function App() {
+const [equipmentList, setEquipmentList] = useState([]);
+const [equipmentCategory, setEquipmentCategory] =
+  useState("");
+
+const [equipmentType, setEquipmentType] =
+  useState("");
+const [status, setStatus] = useState("Received");
+const [currentBay, setCurrentBay] = useState("");
+const [receivedDate, setReceivedDate] = useState("");
+const [workOrderNo, setWorkOrderNo] = useState("");
+const [receivedFrom, setReceivedFrom] = useState("");
+const [remark, setRemark] = useState("");
+const [tentativeDate, setTentativeDate] = useState("");
+const [completionDate, setCompletionDate] = useState("");
+const [searchTerm, setSearchTerm] = useState("");
+const [editIndex, setEditIndex] = useState(null);
+const [isEditing, setIsEditing] = useState(false);
+const [loading, setLoading] = useState(false);
+const [darkMode, setDarkMode] = useState(false);
+const [activeBay, setActiveBay] = useState("All");
+const [activeMenu, setActiveMenu] = useState("Dashboard");
+const [user, setUser] = useState(null);
+const [role, setRole] = useState("");
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [cartItems, setCartItems] = useState([]);
+const [requestDepartment, setRequestDepartment] = useState("");
+const [requestPurpose, setRequestPurpose] = useState("");
+const [requestPriority, setRequestPriority] = useState("Normal");
+const [requiredDate, setRequiredDate] = useState("");
+const [requestRemark, setRequestRemark] = useState("");
+const [requirementsList, setRequirementsList] = useState([]);
+const [authLoading, setAuthLoading] = useState(true);
+const [excelFile, setExcelFile] = useState(null);
+const fetchEquipment = async () => {
+const querySnapshot = await getDocs(collection(db, "equipment")
+ );
+const equipmentData = querySnapshot.docs.map((doc) => ({
+  firebaseId: doc.id,
+  ...doc.data()
+}));
+setEquipmentList(equipmentData);
+};
+useEffect(() => {
+
+  const fetchRequirements = async () => {
+
+    const querySnapshot = await getDocs(
+
+      collection(db, "requirements")
+
+    );
+
+    const requirementsData =
+      querySnapshot.docs.map((doc) => ({
+
+        firebaseId: doc.id,
+
+        ...doc.data()
+
+      }));
+
+    setRequirementsList(requirementsData);
+
+  };
+
+  if (user) {
+
+  fetchEquipment();
+
+  fetchRequirements();
+
+}
+
+}, [user]);
+useEffect(() => {
+
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+
+    setUser(currentUser);
+
+    setAuthLoading(false);
+
+  });
+
+  return () => unsubscribe();
+
+}, []);
+const exportToExcel = () => {
+const exportData = equipmentList.map((item) => ({
+  Work_Order_No: item.workOrderNo,
+  Equipment_Name: item.name,
+  Equipment_Type: item.category,
+  Current_Bay: item.currentBay,
+  Status: item.status,
+  Received_Date: item.receivedDate,
+  Received_From: item.receivedFrom,
+  Tentative_Completion_Date: item.tentativeDate,
+  Equipment_Details: item.equipmentDetails,
+  Remark: item.remark
+}));
+
+const worksheet = XLSX.utils.json_to_sheet(exportData);
+const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Equipment Report"
+  );
+
+const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array"
+  });
+
+const data = new Blob(
+    [excelBuffer],
+    {
+      type:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8"
+    }
+  );
+
+  saveAs(data, "equipment-report.xlsx");
+
+  toast.success("Excel exported successfully");
+};
+const handleDeleteEquipment = async (
+  firebaseId
+) => {
+
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this equipment?"
+  );
+
+  if (!confirmDelete) {
+
+    return;
+
+  }
+
+  await deleteDoc(
+    doc(db, "equipment", firebaseId)
+  );
+
+  fetchEquipment();
+
+  toast.success(
+    "Equipment deleted successfully"
+  );
+
+};
+const handleEditEquipment = (item, index) => {
+
+  setIsEditing(true);
+
+  setEditIndex(index);
+
+  setEquipmentCategory(
+    item.category || ""
+  );
+
+  setEquipmentType(
+    item.name || ""
+  );
+
+  setWorkOrderNo(
+    item.workOrderNo || ""
+  );
+
+  setReceivedFrom(
+    item.receivedFrom || ""
+  );
+
+  setReceivedDate(
+    item.receivedDate || ""
+  );
+
+  setCurrentBay(
+    item.currentBay || "Received Bay"
+  );
+
+  setStatus(
+    item.status || "Received"
+  );
+
+  setTentativeDate(
+    item.tentativeDate || ""
+  );
+
+  setRemark(
+    item.remark || ""
+  );
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+};
+
+const handleAddEquipment = async () => {
+
+  if (
+
+  !equipmentCategory ||
+
+  !equipmentType ||
+
+  !receivedFrom ||
+
+  !receivedDate
+
+) {
+
+  toast.error(
+    "Please fill all mandatory fields"
+  );
+
+  return;
+
+}
+let updatedBay = "";
+let finalCompletionDate = completionDate;
+
+if (status === "Received") {
+  updatedBay = "Received Bay";
+}
+else if (
+  status === "Dismantled" ||
+  status === "Work Under Progress" ||
+  status === "Testing"
+) {
+  updatedBay = "Overhauling Bay";
+}
+else if (status === "Completed") {
+  updatedBay = "Finished Bay";
+}
+if (status === "Completed") {
+
+  finalCompletionDate =
+    new Date().toISOString().split("T")[0];
+
+}
+ const equipmentData = {
+
+  category: equipmentCategory,
+
+  name: equipmentType,
+
+  workOrderNo,
+
+  receivedFrom,
+
+  receivedDate,
+
+  currentBay: updatedBay || currentBay,
+
+  status,
+
+  tentativeDate,
+
+  actualCompletedDate:
+    status === "Completed"
+      ? new Date()
+          .toLocaleDateString()
+      : "",
+
+  remark,
+
+  createdAt:
+    new Date()
+
+};
+
+if (isEditing) {
+
+  const itemToUpdate = equipmentList[editIndex];
+
+  await updateDoc(
+    doc(db, "equipment", itemToUpdate.firebaseId),
+    equipmentData
+  );
+
+  fetchEquipment();
+  toast.success("Equipment updated successfully");
+
+  setIsEditing(false);
+  setEditIndex(null);
+
+} else {
+
+  await addDoc(
+    collection(db, "equipment"),
+    equipmentData
+  );
+
+  fetchEquipment();
+  toast.success("Equipment added successfully");
+}
+
+setEquipmentCategory("");
+
+setEquipmentType("");
+
+setWorkOrderNo("");
+
+setReceivedFrom("");
+
+setReceivedDate("");
+
+setCurrentBay("Received Bay");
+
+setStatus("Received");
+
+setTentativeDate("");
+
+setRemark("");
+
+};
+const statusData = [
+  {
+    name: "Received",
+    value: equipmentList.filter(
+      (item) => item.status === "Received"
+    ).length
+  },
+
+  {
+    name: "Dismantled",
+    value: equipmentList.filter(
+      (item) => item.status === "Dismantled"
+    ).length
+  },
+
+  {
+    name: "WIP",
+    value: equipmentList.filter(
+      (item) =>
+        item.status === "Work Under Progress"
+    ).length
+  },
+
+  {
+    name: "Testing",
+    value: equipmentList.filter(
+      (item) => item.status === "Testing"
+    ).length
+  },
+
+  {
+    name: "Completed",
+    value: equipmentList.filter(
+      (item) => item.status === "Completed"
+    ).length
+  }
+];
+
+const COLORS = [
+  "#3b82f6",
+  "#ef4444",
+  "#f59e0b",
+  "#8b5cf6",
+  "#22c55e"
+];
+const motorStatusData = [
+
+  {
+    name: "Received",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Received"
+    ).length
+  },
+
+  {
+    name: "Dismantled",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Dismantled"
+    ).length
+  },
+
+  {
+    name: "WIP",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Work Under Progress"
+    ).length
+  },
+
+  {
+    name: "Testing",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Testing"
+    ).length
+  },
+
+  {
+    name: "Completed",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Motor" &&
+        item.status === "Completed"
+    ).length
+  }
+
+];
+const pumpStatusData = [
+
+  {
+    name: "Received",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Received"
+    ).length
+  },
+
+  {
+    name: "Dismantled",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Dismantled"
+    ).length
+  },
+
+  {
+    name: "WIP",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Work Under Progress"
+    ).length
+  },
+
+  {
+    name: "Testing",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Testing"
+    ).length
+  },
+
+  {
+    name: "Completed",
+    value: equipmentList.filter(
+      (item) =>
+        item.category === "Pump" &&
+        item.status === "Completed"
+    ).length
+  }
+
+];
+const departmentData = Object.values(
+
+  equipmentList.reduce((acc, item) => {
+
+    const dept = item.receivedFrom || "Unknown";
+
+    if (!acc[dept]) {
+
+      acc[dept] = {
+        department: dept,
+        count: 0
+      };
+
+    }
+
+    acc[dept].count += 1;
+
+    return acc;
+}, 
+{})
+);
+const monthlyTrendData = [];
+
+const monthlyMap = {};
+
+equipmentList.forEach((item) => {
+
+  // Received Data
+
+  if (item.receivedDate) {
+
+    const receivedMonth = new Date(
+      item.receivedDate
+    ).toLocaleString("default", {
+      month: "short"
+    });
+
+    if (!monthlyMap[receivedMonth]) {
+
+      monthlyMap[receivedMonth] = {
+        month: receivedMonth,
+        received: 0,
+        completed: 0
+      };
+
+    }
+
+    monthlyMap[receivedMonth].received += 1;
+
+  }
+
+  // Completed Data
+
+  if (item.actualCompletedDate) {
+
+    const completedMonth = new Date(
+      item.actualCompletedDate
+    ).toLocaleString("default", {
+      month: "short"
+    });
+
+    if (!monthlyMap[completedMonth]) {
+
+      monthlyMap[completedMonth] = {
+        month: completedMonth,
+        received: 0,
+        completed: 0
+      };
+
+    }
+
+    monthlyMap[completedMonth].completed += 1;
+
+  }
+
+});
+
+Object.values(monthlyMap).forEach((item) => {
+  monthlyTrendData.push(item);
+});
+const handleLogin = async () => {
+
+  try {
+
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    if (
+      email === "admin@workshop.com"
+    ) {
+
+      setRole("admin");
+
+    } else {
+
+      setRole("department");
+
+    }
+
+    toast.success(
+      "Login successful"
+    );
+
+  } catch (error) {
+
+    toast.error(
+      "Invalid email or password"
+    );
+
+  }
+
+};
+const handleGuestLogin = async () => {
+
+  try {
+
+    await signInWithEmailAndPassword(
+      auth,
+      "guest@workshop.com",
+      "guest123"
+    );
+
+    setRole("guest");
+
+    toast.success(
+      "Guest login successful"
+    );
+
+  } catch (error) {
+
+    toast.error(
+      "Guest login failed"
+    );
+
+  }
+
+};
+const handleLogout = async () => {
+
+  try {
+
+    await signOut(auth);
+    setRole("");
+
+    toast.success("Logged out successfully");
+
+  } catch (error) {
+
+    toast.error("Logout failed");
+
+  }
+
+};
+if (authLoading) {
+  return (
+    <div className="h-screen flex items-center justify-center text-2xl font-bold">
+      Loading...
+    </div>
+  );
+}
+
+if (!user)
+  return (
+
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-900">
+
+      <div className="bg-white p-10 rounded-3xl shadow-2xl w-[400px]">
+
+        <h2 className="text-4xl font-extrabold text-center text-slate-800 mb-8">
+          Workshop Login
+        </h2>
+
+        <input
+          type="email"
+          placeholder="Enter Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-4 border border-slate-300 rounded-2xl mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="password"
+          placeholder="Enter Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-4 border border-slate-300 rounded-2xl mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <button
+          onClick={handleLogin}
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 rounded-2xl font-bold text-lg hover:scale-105 transition duration-300 shadow-xl"
+        >
+          Login
+        </button>
+
+        <button
+         onClick={handleGuestLogin}
+         className="w-full mt-4 bg-slate-700 text-white py-4 rounded-2xl font-bold text-lg hover:scale-105 transition duration-300 shadow-xl"
+        >
+         Login as Guest
+        </button>
+      </div>
+
+    </div>
+
+  );
+
+const handleSubmitRequirement = async () => {
+
+  if (
+    cartItems.length === 0 ||
+    requestDepartment === "" ||
+    requestPurpose === ""
+  ) {
+
+    alert("Please complete all required fields.");
+
+    return;
+
+  }
+
+  const newRequirement = {
+
+    reqNo: `REQ-${requirementsList.length + 1}`,
+
+    id: Date.now(),
+
+    department: requestDepartment,
+
+    purpose: requestPurpose,
+
+    priority: requestPriority,
+
+    requiredDate: requiredDate,
+
+    remark: requestRemark,
+
+    items: cartItems,
+
+    status: "Pending",
+
+    expectedDeliveryDate: "",
+
+    approvedBy: "",
+
+    rejectedBy: "",
+
+    actionDate: "",
+
+    dispatchDate: ""
+
+  };
+
+setRequirementsList([
+  ...requirementsList,
+  newRequirement
+]);
+
+// Save to Firebase
+await addDoc(
+
+  collection(db, "requirements"),
+
+  newRequirement
+
+);
+
+setEquipmentList(
+
+  equipmentList.map((equipment) => {
+
+    const selectedItem = cartItems.find(
+
+      (cartItem) =>
+        cartItem.firebaseId === equipment.firebaseId
+
+    );
+
+    if (selectedItem) {
+
+      return {
+
+        ...equipment,
+
+        reserved: true,
+
+        reservedBy: newRequirement.reqNo
+
+      };
+
+    }
+
+    return equipment;
+
+  })
+
+);
+cartItems.forEach(async (item) => {
+
+  if (item.firebaseId) {
+
+    await updateDoc(
+
+      doc(db, "equipment", item.firebaseId),
+
+      {
+
+        reserved: true,
+
+        reservedBy: newRequirement.reqNo
+
+      }
+
+    );
+
+  }
+
+});
+  // Clear form after submit
+
+  setCartItems([]);
+
+  setRequestDepartment("");
+
+  setRequestPurpose("");
+
+  setRequestPriority("Normal");
+
+  setRequiredDate("");
+
+  setRequestRemark("");
+
+  alert("Requirement Submitted Successfully!");
+
+};
+
+const handleExcelUpload = async () => {
+
+  if (!excelFile) {
+
+    alert("Please select an Excel file.");
+
+    return;
+
+  }
+
+  const reader = new FileReader();
+
+  reader.readAsArrayBuffer(excelFile);
+
+  reader.onload = async (e) => {
+
+    const data = new Uint8Array(
+      e.target.result
+    );
+
+    const workbook = XLSX.read(data, {
+      type: "array"
+    });
+
+    const sheetName =
+      workbook.SheetNames[0];
+
+    const worksheet =
+      workbook.Sheets[sheetName];
+
+    const jsonData =
+  XLSX.utils.sheet_to_json(worksheet, {
+    raw: false
+  });
+
+    for (const item of jsonData) {
+
+  await addDoc(
+    collection(db, "equipment"),
+    {
+      ...item,
+      reserved: false,
+      reservedBy: ""
+    }
+  );
+
+}
+
+alert(
+  "Equipment uploaded successfully!"
+);
+
+fetchEquipment();
+
+  };
+
+};
+const getEquipmentTypes = () => {
+
+  switch (equipmentCategory) {
+
+    case "Pump":
+      return pumpTypes;
+
+    case "Motor":
+      return motorTypes;
+
+    case "Transformer":
+      return transformerTypes;
+
+    case "Belt Materials":
+      return beltMaterialTypes;
+
+    case "Skat Materials":
+      return skatMaterialTypes;
+
+    case "Fabrication Items":
+      return fabricationTypes;
+
+    default:
+      return [];
+
+  }
+
+};
+const pumpSummary =
+  installedPumpData.map(
+    (pump) => {
+
+      const filtered =
+        equipmentList.filter(
+
+          (item) =>
+
+            item.category === "Pump" &&
+
+            item.name === pump.type
+
+        );
+
+      const receivedBay =
+        filtered.filter(
+          (item) =>
+            item.currentBay ===
+            "Received Bay"
+        ).length;
+
+      const overhaulingBay =
+        filtered.filter(
+          (item) =>
+            item.currentBay ===
+            "Overhauling Bay"
+        ).length;
+
+      const finishedBay =
+        filtered.filter(
+          (item) =>
+            item.currentBay ===
+            "Finished Bay"
+        ).length;
+
+      return {
+
+        type: pump.type,
+
+        installedQty:
+          pump.installedQty,
+
+        receivedBay,
+
+        overhaulingBay,
+
+        finishedBay,
+
+        availableQty:
+          receivedBay +
+          overhaulingBay +
+          finishedBay,
+
+        alert:
+          receivedBay +
+            overhaulingBay +
+            finishedBay <
+          2
+
+      };
+
+    }
+  );
+const downloadExcelTemplate = () => {
+
+  const templateData = [
+
+    {
+
+      "Equipment Category": "Pump",
+
+      "Equipment Type": "T-III,3CHR",
+
+      "Work Order No": "WO-101",
+
+      "Received From": "Jamadoba Colliery",
+
+      "Received Date": "2026-05-27",
+
+      "Current Bay": "Received Bay",
+
+      "Status": "Received",
+
+      "Tentative Completion Date": "2026-06-10",
+
+      "Actual Completed Date": "",
+
+      "Remark": "Sample Entry"
+
+    }
+
+  ];
+
+  const worksheet =
+    XLSX.utils.json_to_sheet(
+      templateData
+    );
+
+  const workbook =
+    XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Equipment Template"
+  );
+
+  XLSX.writeFile(
+    workbook,
+    "Equipment_Upload_Template.xlsx"
+  );
+
+};
+
+return (
+  <div>
+    <Toaster position="top-right" />
+    <div
+      className={`flex flex-col lg:flex-row min-h-screen transition duration-500 ${
+        darkMode
+          ? "bg-slate-900 text-white"
+          : "bg-gradient-to-br from-slate-100 to-blue-100 text-slate-900"
+      }`}
+    >
+      {/* Sidebar */}
+}`}
+>
+
+{/* Sidebar */}
+<div className="w-full lg:w-60 bg-gradient-to-b from-slate-950 via-slate-900 to-blue-950 text-white p-5 shadow-2xl flex flex-col">
+<div className="mb-10 text-center">
+
+<h1 className="text-3xl font-extrabold tracking-tight leading-tight text-white">
+  ⚙ Workshop Tracker
+</h1>
+
+<p className="text-xs text-slate-400 mt-2">
+  Workshop Management System
+</p>
+
+</div>
+<div className="border-b border-slate-800 mb-6"></div>
+<ul className="space-y-3">
+
+<li
+  onClick={() => setActiveMenu("Dashboard")}
+  className={`flex items-center gap-3 px-4 h-12 rounded-2xl cursor-pointer transition-all duration-300 font-semibold ${
+    activeMenu === "Dashboard"
+      ? "bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg shadow-blue-900/30"
+      : "hover:bg-slate-800 hover:translate-x-1"
+  }`}
+>
+  <LayoutDashboard size={20} />
+  Dashboard
+</li>
+
+{role === "admin" && (
+<li
+  onClick={() => setActiveMenu("Equipment")}
+  className={`flex items-center gap-3 px-4 h-12 rounded-2xl cursor-pointer transition-all duration-300 font-semibold ${
+    activeMenu === "Equipment"
+      ? "bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg shadow-blue-900/30"
+      : "hover:bg-slate-800 hover:translate-x-1"
+  }`}
+>
+  <Package size={20} />
+  Equipment
+</li>
+)}
+<li
+  onClick={() => setActiveMenu("Requirements")}
+  className={`flex items-center gap-3 px-4 h-12 rounded-2xl cursor-pointer transition-all duration-300 font-semibold ${
+    activeMenu === "Requirements"
+      ? "bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg shadow-blue-900/30"
+      : "hover:bg-slate-800 hover:translate-x-1"
+  }`}
+>
+  <ShoppingCart size={20} />
+  Requirements
+</li>
+
+<li
+  onClick={() => setActiveMenu("Reports")}
+  className={`flex items-center gap-3 px-4 h-12 rounded-2xl cursor-pointer transition-all duration-300 font-semibold ${
+    activeMenu === "Reports"
+      ? "bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg shadow-blue-900/30"
+      : "hover:bg-slate-800 hover:translate-x-1"
+  }`}
+>
+  <FileText size={20} />
+  Reports
+</li>
+<div className="mt-auto pt-8 text-center text-xs text-slate-500">
+  Workshop Tracker v1.0
+</div>
+</ul>
+</div>
+
+{/* Main Content */}
+<div className="flex-1 p-4 lg:p-10 overflow-auto">
+<div className="flex justify-between items-center mb-10">
+<div>
+<h2 className={`text-4xl font-extrabold ${
+darkMode ? "text-white" : "text-slate-800"
+}`}>
+{
+  activeMenu === "Dashboard"
+    ? "Workshop Dashboard"
+
+    : activeMenu === "Equipment"
+    ? "Equipment Management"
+
+    : activeMenu === "Requirements"
+    ? "Requirements Management"
+
+    : "Reports & Analytics"
+}
+</h2>
+<p className={`mt-2 ${
+darkMode ? "text-slate-300" : "text-slate-500"
+}`}>
+{
+  activeMenu === "Dashboard"
+
+    ? "Monitor and manage workshop equipment efficiently"
+
+    : activeMenu === "Equipment"
+
+    ? "Add and manage workshop equipment workflow"
+
+    : activeMenu === "Requirements"
+
+    ? "Manage workshop equipment requirements and approvals"
+
+    : "Track equipment reports and workflow analytics"
+}
+</p>
+</div>
+<div className="flex items-center gap-4">
+<button
+onClick={() => setDarkMode(!darkMode)}
+className="bg-slate-800 text-white px-5 py-3 rounded-2xl shadow-lg hover:scale-105 transition duration-300 font-semibold"
+>
+{darkMode ? "☀ Light" : "🌙 Dark"}
+</button>
+<div className="bg-white/70 backdrop-blur-lg px-5 py-3 rounded-2xl shadow-md flex items-center gap-4">
+
+  <div>
+    <p className="text-sm text-slate-500">
+      Logged in as
+    </p>
+
+    <h4 className="font-bold text-slate-700">
+      {user?.email}
+    </h4>
+  </div>
+
+  <button
+    onClick={handleLogout}
+    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold transition duration-300"
+  >
+    Logout
+  </button>
+
+</div>
+</div>
+</div>
+</div>
+{activeMenu === "Dashboard" && (
+  <>
+<div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 lg:gap-8 mb-10">
+<div
+className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+darkMode
+? "bg-slate-800/80 border-slate-700"
+: "bg-white/80 border-white/30"
+}`}
+>
+<h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
+Total Equipment
+</h3>
+<p className="text-6xl font-extrabold text-black-600 mt-4">
+{equipmentList.length}
+</p>
+</div>
+<div
+className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+darkMode
+? "bg-slate-800/80 border-slate-700"
+: "bg-white/80 border-white/30"
+}`}
+>
+<h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
+📥 Received Bay
+</h3>
+<p className="text-6xl font-extrabold text-blue-500 mt-4">
+{
+equipmentList.filter(
+(item) =>
+(item.currentBay || "Received Bay") === "Received Bay"
+).length
+}
+</p>
+</div>
+<div
+className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+darkMode
+? "bg-slate-800/80 border-slate-700"
+: "bg-white/80 border-white/30"
+}`}
+>
+<h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
+🛠 Overhauling Bay
+</h3>
+<p className="text-6xl font-extrabold text-yellow-600 mt-4">
+{
+equipmentList.filter(
+(item) => item.currentBay === "Overhauling Bay"
+).length
+}
+</p>
+</div>
+<div
+className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+darkMode
+? "bg-slate-800/80 border-slate-700"
+: "bg-white/80 border-white/30"
+}`}
+>
+<h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
+✅ Finished Bay
+</h3>
+<p className="text-6xl font-extrabold text-green-600 mt-4">
+{
+equipmentList.filter(
+(item) => item.currentBay === "Finished Bay"
+).length
+}
+</p>
+</div>
+<div
+className={`backdrop-blur-lg p-8 rounded-3xl shadow-xl hover:scale-105 transition duration-300 border ${
+darkMode
+? "bg-slate-800/80 border-slate-700"
+: "bg-white/80 border-white/30"
+}`}
+>
+<h3 className="text-lg font-bold text-slate-600 uppercase tracking-wide">
+🚨 Delayed Equipment
+</h3>
+<p className="text-6xl font-extrabold text-red-500 mt-4">
+{
+equipmentList.filter(
+(item) =>
+item.tentativeDate &&
+item.tentativeDate <
+new Date().toISOString().split("T")[0] &&
+item.status !== "Completed"
+).length
+}
+</p>
+</div>
+</div>
+{/* Cards */}
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-6">
+
+<div
+  className={`p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-800"
+      : "bg-white/80 backdrop-blur-lg"
+  }`}
+>
+
+<div className="flex items-center justify-between mb-6">
+
+<h2
+  className={`text-2xl font-bold ${
+    darkMode
+      ? "text-white"
+      : "text-slate-800"
+  }`}
+>
+  🛠 Pump Availability Summary
+</h2>
+
+<span className="text-sm text-slate-500">
+  Live Workshop Availability
+</span>
+
+</div>
+
+<div className="overflow-x-auto">
+
+<table className="w-full">
+
+<thead>
+
+<tr
+  className={`border-b ${
+    darkMode
+      ? "border-slate-700"
+      : "border-slate-200"
+  }`}
+>
+
+<th className="text-left py-4 px-3">
+  Pump Type
+</th>
+
+<th className="text-center py-4 px-3">
+  Installed Qty
+</th>
+
+<th className="text-center py-4 px-3">
+  Overhauling
+</th>
+
+<th className="text-center py-4 px-3">
+  Finished
+</th>
+
+<th className="text-center py-4 px-3">
+  Available Qty
+</th>
+
+<th className="text-center py-4 px-3">
+  Alert
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{pumpSummary.map((pump, index) => (
+
+<tr
+  key={index}
+  className={`border-b transition duration-300 hover:bg-slate-100/50 ${
+    darkMode
+      ? "border-slate-700 hover:bg-slate-700/30"
+      : "border-slate-200"
+  }`}
+>
+
+<td className="py-4 px-3 font-semibold">
+  {pump.type}
+</td>
+
+<td className="text-center py-4 px-3 font-bold">
+
+  {pump.installedQty}
+
+</td>
+
+<td className="text-center py-4 px-3 text-blue-600 font-bold">
+  {pump.receivedBay}
+</td>
+
+<td className="text-center py-4 px-3 text-orange-500 font-bold">
+  {pump.overhaulingBay}
+</td>
+
+<td className="text-center py-4 px-3 text-green-600 font-bold">
+  {pump.finishedBay}
+</td>
+
+<td className="text-center py-4 px-3 font-bold text-indigo-600">
+
+  {pump.availableQty}
+
+</td>
+
+<td className="text-center py-4 px-3">
+
+{pump.alert ? (
+
+<span className="bg-red-500 text-white px-3 py-1 rounded-xl text-sm font-bold">
+  Critical
+</span>
+
+) : (
+
+<span className="bg-green-500 text-white px-3 py-1 rounded-xl text-sm font-bold">
+  Normal
+</span>
+
+)}
+
+</td>
+
+</tr>
+
+))}
+
+</tbody>
+
+</table>
+
+</div>
+</div>
+</div>
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-6">
+{/* Department Analytics */}
+
+<div
+  className={`mt-6 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-800"
+      : "bg-white/80 backdrop-blur-lg"
+  }`}
+>
+
+  <h2
+    className={`text-2xl font-bold mb-6 ${
+      darkMode ? "text-white" : "text-slate-800"
+    }`}
+  >
+    🏢 Department-wise Equipment Received
+  </h2>
+
+  <div className="w-full h-[240px]">
+
+    <ResponsiveContainer width="100%" height="100%">
+
+      <LineChart data={departmentData}>
+
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis dataKey="department" />
+
+        <YAxis />
+
+        <Tooltip />
+
+        <Legend />
+
+        <Line
+          type="monotone"
+          dataKey="count"
+          stroke="#f59e0b"
+          strokeWidth={4}
+        />
+
+      </LineChart>
+
+    </ResponsiveContainer>
+
+  </div>
+
+</div>
+
+{/* Monthly Trend Analytics */}
+
+<div
+  className={`mt-6 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-800"
+      : "bg-white/80 backdrop-blur-lg"
+  }`}
+>
+
+  <h2
+    className={`text-2xl font-bold mb-6 ${
+      darkMode ? "text-white" : "text-slate-800"
+    }`}
+  >
+    📅 Monthly Equipment Trend
+  </h2>
+
+  <div className="w-full h-[240px]">
+
+    <ResponsiveContainer width="100%" height="100%">
+
+      <BarChart data={monthlyTrendData}>
+
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis dataKey="month" />
+
+        <YAxis />
+
+        <Tooltip />
+
+        <Legend />
+
+        <Bar
+          dataKey="received"
+          fill="#3b82f6"
+          radius={[8, 8, 0, 0]}
+        />
+
+        <Bar
+          dataKey="completed"
+          fill="#22c55e"
+          radius={[8, 8, 0, 0]}
+        />
+
+      </BarChart>
+
+    </ResponsiveContainer>
+
+  </div>
+
+</div>
+</div>
+</>
+)}
+
+{/* Add Equipment Form */}
+{activeMenu === "Equipment" && (
+<div
+className={`backdrop-blur-lg p-5 rounded-3xl shadow-2xl mb-6 border ${
+darkMode
+? "bg-slate-800/80 border-slate-700"
+: "bg-white/80 border-white/30"
+}`}
+>
+<h3 className={`text-2xl font-extrabold mb-6 ${
+darkMode ? "text-white" : "text-slate-800"
+}`}>
+Add New Equipment
+</h3>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label
+className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}
+>
+Work Order No
+</label>
+<input
+type="text"
+placeholder="Enter Work Order No"
+value={workOrderNo}
+onChange={(e) => setWorkOrderNo(e.target.value)}
+className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+darkMode
+? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+: "bg-white/70 border-slate-200 text-slate-900"
+}`}
+/>
+</div>
+<div>
+<label
+className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}
+>
+Received Date
+</label>
+<input
+type="date"
+value={receivedDate}
+onChange={(e) => setReceivedDate(e.target.value)}
+className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+darkMode
+? "bg-slate-700 border-slate-600 text-white"
+: "bg-white/70 border-slate-200 text-slate-900"
+}`}
+/>
+</div>
+
+<div>
+
+<label
+className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}
+>
+  RECEIVED FROM
+</label>
+
+<select
+
+  value={receivedFrom}
+
+  onChange={(e) =>
+    setReceivedFrom(
+      e.target.value
+    )
+  }
+
+  className="w-full h-12 px-4 rounded-xl border mt-2 text-black"
+>
+
+<option value="">
+  Select Source
+</option>
+
+{receivedFromList.map(
+  (source, index) => (
+
+    <option
+      key={index}
+      value={source}
+    >
+
+      {source}
+
+    </option>
+
+  )
+)}
+
+</select>
+
+</div>
+
+<div>
+
+<label className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}>
+  EQUIPMENT CATEGORY
+</label>
+
+<select
+
+  value={equipmentCategory}
+
+  onChange={(e) => {
+
+    setEquipmentCategory(
+      e.target.value
+    );
+
+    setEquipmentType("");
+
+  }}
+
+  className="w-full h-12 px-4 rounded-xl border mt-2 text-black"
+>
+
+<option value="">
+  Select Category
+</option>
+
+{equipmentCategories.map(
+  (category, index) => (
+
+    <option
+      key={index}
+      value={category}
+    >
+
+      {category}
+
+    </option>
+
+  )
+)}
+
+</select>
+
+</div>
+<div>
+
+<label className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}>
+  EQUIPMENT TYPE
+</label>
+
+<select
+
+  value={equipmentType}
+
+  onChange={(e) =>
+    setEquipmentType(
+      e.target.value
+    )
+  }
+
+  className="w-full h-12 px-4 rounded-xl border mt-2 text-black"
+>
+
+<option value="">
+  Select Equipment Type
+</option>
+
+{getEquipmentTypes().map(
+  (type, index) => (
+
+    <option
+      key={index}
+      value={type}
+    >
+
+      {type}
+
+    </option>
+
+  )
+)}
+
+</select>
+
+</div>
+
+<div>
+<label
+className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}
+>
+Tentative Completion Date
+</label>
+<input
+type="date"
+value={tentativeDate}
+onChange={(e) => setTentativeDate(e.target.value)}
+className={`w-full p-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+darkMode
+? "bg-slate-700 border-slate-600 text-white"
+: "bg-white/70 border-slate-200 text-slate-900"
+}`}
+/>
+</div>
+<div className="md:col-span-2">
+<label
+className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}
+>
+Remark
+</label>
+<textarea
+placeholder="Please enter any remarks or special instructions regarding the equipment"
+value={remark}
+onChange={(e) => setRemark(e.target.value)}
+rows="1"
+className={`w-full p-2 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border resize-none ${
+darkMode
+? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+: "bg-white/70 border-slate-200 text-slate-900"
+}`}
+/>
+</div>
+
+<div>
+
+<label
+className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}
+>
+  Current Bay
+</label>
+
+<select
+
+  value={currentBay}
+
+  onChange={(e) =>
+    setCurrentBay(
+      e.target.value
+    )
+  }
+
+  className="w-full h-12 px-4 rounded-xl border mt-2 text-black"
+>
+
+{bayList.map(
+  (bay, index) => (
+
+    <option
+      key={index}
+      value={bay}
+    >
+
+      {bay}
+
+    </option>
+
+  )
+)}
+
+</select>
+
+</div>
+
+<div>
+
+<label className={`block mb-2 text-sm font-bold uppercase tracking-wide ${
+darkMode ? "text-slate-300" : "text-slate-600"
+}`}>
+  Status
+</label>
+
+<select
+
+  value={status}
+
+  onChange={(e) => {
+
+    setStatus(
+      e.target.value
+    );
+
+    // Auto bay update
+
+    if (
+      e.target.value ===
+      "Completed"
+    ) {
+
+      setCurrentBay(
+        "Finished Bay"
+      );
+
+    }
+
+    else if (
+      e.target.value ===
+      "Overhauling"
+    ) {
+
+      setCurrentBay(
+        "Overhauling Bay"
+      );
+
+    }
+
+  }}
+
+  className="w-full h-12 px-4 rounded-xl border mt-2 text-black"
+>
+
+{statusList.map(
+  (statusItem, index) => (
+
+    <option
+      key={index}
+      value={statusItem}
+    >
+
+      {statusItem}
+
+    </option>
+
+  )
+)}
+
+</select>
+
+</div>
+
+</div>
+{role === "admin" && (
+<div className="mt-8 space-y-5">
+
+  {/* Save Equipment */}
+
+  <div>
+
+    <button
+
+      onClick={handleAddEquipment}
+
+      className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-5 h-10 rounded-xl shadow-md hover:shadow-lg transition duration-300 font-medium text-sm"
+
+    >
+
+      {
+
+        loading
+
+          ? "Saving..."
+
+          : isEditing
+
+          ? "Update Equipment"
+
+          : "Save Equipment"
+
+      }
+
+    </button>
+
+  </div>
+
+  {/* Excel Management */}
+
+  <div className="bg-slate-100 border border-slate-200 rounded-2xl p-4">
+
+    <h3 className="text-sm font-semibold text-slate-700 mb-4">
+
+      Excel Management
+
+    </h3>
+
+    <div className="flex flex-wrap items-center gap-3">
+
+      {/* Choose File */}
+
+      <label
+
+        className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-4 h-10 rounded-xl flex items-center cursor-pointer transition duration-300 text-sm font-medium shadow-sm"
+
+      >
+
+        📂 Choose Excel File
+
+        <input
+
+          type="file"
+
+          accept=".xlsx, .xls"
+
+          onChange={(e) =>
+            setExcelFile(e.target.files[0])
+          }
+
+          className="hidden"
+
+        />
+
+      </label>
+
+      {/* Upload Button */}
+
+      <button
+
+        onClick={handleExcelUpload}
+
+        disabled={!excelFile}
+
+        className={`px-5 h-10 rounded-xl font-medium text-sm transition duration-300 text-white ${
+          excelFile
+            ? "bg-green-600 hover:bg-green-700 shadow-sm"
+            : "bg-slate-400 cursor-not-allowed"
+        }`}
+
+      >
+
+        📤 Upload
+
+      </button>
+
+      {/* Download Template */}
+
+      <button
+
+        onClick={downloadExcelTemplate}
+
+        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 h-10 rounded-xl font-medium text-sm transition duration-300 shadow-sm"
+
+      >
+
+        📥 Download Template
+
+      </button>
+
+    </div>
+
+    {/* Selected File */}
+
+    {excelFile && (
+
+      <div className="mt-3 inline-flex items-center bg-emerald-100 text-emerald-700 px-3 py-2 rounded-xl text-xs font-medium">
+
+        ✅ {excelFile.name}
+
+      </div>
+
+    )}
+
+    <p className="text-xs text-slate-500 mt-3">
+
+      Supported formats: .xlsx, .xls
+
+    </p>
+
+  </div>
+
+</div>
+)}
+{isEditing && (
+  <button
+    onClick={() => {
+
+      setIsEditing(false);
+      setActiveMenu("Reports");
+      setEditIndex(null);
+
+      setEquipmentType("");
+      setEquipmentCategory("");
+
+      setReceivedDate("");
+      setWorkOrderNo("");
+      setReceivedFrom("");
+      setRemark("");
+      setTentativeDate("");
+
+      setStatus("Received");
+      setCurrentBay("Received Bay");
+
+    }}
+className="mt-4 ml-4 bg-slate-500 hover:bg-slate-600 text-white px-8 py-4 rounded-2xl shadow-lg transition duration-300 font-bold"
+  >
+    Cancel Edit
+  </button>
+)}
+</div>
+)}
+
+
+{/* Equipment Table */}
+{activeMenu === "Requirements" && (
+
+  <div>
+
+    <div
+      className={`p-8 rounded-3xl shadow-xl ${
+        darkMode
+          ? "bg-slate-800"
+          : "bg-white/80 backdrop-blur-lg"
+      }`}
+    >
+<div className="overflow-x-auto">
+
+  <table className="w-full border-collapse">
+
+    <thead>
+
+      <tr
+        className={`${
+          darkMode
+            ? "bg-slate-700 text-white"
+            : "bg-slate-200 text-slate-800"
+        }`}
+      >
+
+        <th className="p-4 text-left">
+          Equipment Type
+        </th>
+
+        <th className="p-4 text-left">
+          Equipment Category
+        </th>
+
+        <th className="p-4 text-left">
+          Received From
+        </th>
+
+        <th className="p-4 text-center">
+          Action
+        </th>
+
+      </tr>
+
+    </thead>
+
+    <tbody>
+
+      {equipmentList
+
+        .filter(
+          (item) =>
+            item.currentBay ===
+              "Finished Bay" &&
+            !item.reserved
+        )
+
+        .map((item, index) => (
+
+          <tr
+
+            key={index}
+
+            className={`border-b ${
+              darkMode
+                ? "border-slate-700"
+                : "border-slate-200"
+            } hover:bg-slate-50 transition duration-200`}
+
+          >
+
+            <td className="p-4 font-medium">
+
+              {item.name}
+
+            </td>
+
+            <td className="p-4">
+
+              {item.category}
+
+            </td>
+
+            <td className="p-4">
+
+              {item.receivedFrom}
+
+            </td>
+
+<td className="p-4 text-center">
+
+  {role !== "guest" ? (
+
+    <button
+
+      onClick={() => {
+
+        const cleanedCart =
+          cartItems.filter(
+            (cartItem) =>
+              cartItem.firebaseId
+          );
+
+        const alreadyExists =
+          cleanedCart.some(
+            (cartItem) =>
+              cartItem.firebaseId ===
+              item.firebaseId
+          );
+
+        if (alreadyExists) {
+
+          toast.error(
+            "Equipment already added"
+          );
+
+          return;
+
+        }
+
+        setCartItems([
+          ...cleanedCart,
+          item
+        ]);
+
+        toast.success(
+          "Added to cart"
+        );
+
+      }}
+
+      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition duration-300"
+
+    >
+
+      ➕ Add to Cart
+
+    </button>
+
+  ) : null}
+
+</td>
+          </tr>
+
+        ))}
+
+    </tbody>
+
+  </table>
+
+</div>
+
+<div
+  className={`mt-8 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-800"
+      : "bg-white/80 backdrop-blur-lg"
+  }`}
+>
+
+  <div className="flex items-center justify-between mb-6">
+
+    <h3 className="text-2xl font-bold text-slate-800">
+
+      🛒 Selected Equipment
+
+    </h3>
+
+    <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold">
+
+      {cartItems.length} Selected
+
+    </span>
+
+  </div>
+
+  {cartItems.length === 0 ? (
+
+    <div className="text-center py-8 text-slate-500">
+
+      No equipment selected
+
+    </div>
+
+  ) : (
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      {cartItems.map((item, index) => (
+
+        <div
+
+          key={index}
+
+          className={`border rounded-2xl p-5 shadow-sm ${
+            darkMode
+              ? "border-slate-700 bg-slate-900"
+              : "border-slate-200 bg-white"
+          }`}
+
+        >
+
+          <div className="space-y-2">
+
+            <h4 className="text-lg font-bold text-slate-800">
+
+              {item.name}
+
+            </h4>
+
+            <p className="text-sm text-slate-500">
+
+              {item.category}
+
+            </p>
+
+            <p className="text-sm text-slate-500">
+
+              {item.receivedFrom}
+
+            </p>
+
+          </div>
+
+          <button
+
+            onClick={() => {
+
+              setCartItems(
+
+                cartItems.filter(
+
+                  (cartItem) =>
+
+                    cartItem.firebaseId !==
+                    item.firebaseId
+
+                )
+
+              );
+
+              toast.success(
+                "Removed from cart"
+              );
+
+            }}
+
+            className="mt-5 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition duration-300"
+
+          >
+
+            ❌ Remove
+
+          </button>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  )}
+
+</div>
+
+{role !== "guest" && (
+<div
+  className={`mt-10 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-800"
+      : "bg-white/80 backdrop-blur-lg"
+  }`}
+>
+
+  <div className="flex items-center justify-between mb-8">
+
+    <h3 className="text-2xl font-bold text-slate-800">
+
+      📝 Submit Requirement
+
+    </h3>
+
+    <span className="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl text-sm font-semibold">
+
+      Requisition Form
+
+    </span>
+
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <div>
+
+      <label className="block text-sm font-semibold mb-2">
+
+        Department
+
+      </label>
+
+      <input
+        type="text"
+        value={requestDepartment}
+        onChange={(e) =>
+          setRequestDepartment(e.target.value)
+        }
+        placeholder="Enter Department Name"
+        className="w-full px-4 py-3 rounded-xl border border-slate-300 text-black"
+      />
+
+    </div>
+
+    <div>
+
+      <label className="block text-sm font-semibold mb-2">
+
+        Purpose
+
+      </label>
+
+      <input
+        type="text"
+        value={requestPurpose}
+        onChange={(e) =>
+          setRequestPurpose(e.target.value)
+        }
+        placeholder="Purpose of Requirement"
+        className="w-full px-4 py-3 rounded-xl border border-slate-300 text-black"
+      />
+
+    </div>
+
+    <div>
+
+      <label className="block text-sm font-semibold mb-2">
+
+        Priority
+
+      </label>
+
+      <select
+        value={requestPriority}
+        onChange={(e) =>
+          setRequestPriority(e.target.value)
+        }
+        className="w-full px-4 py-3 rounded-xl border border-slate-300 text-black"
+      >
+
+        <option value="Normal">
+          Normal
+        </option>
+
+        <option value="Urgent">
+          Urgent
+        </option>
+
+        <option value="Critical">
+          Critical
+        </option>
+
+      </select>
+
+    </div>
+
+    <div>
+
+      <label className="block text-sm font-semibold mb-2">
+
+        Required Date
+
+      </label>
+
+      <input
+        type="date"
+        value={requiredDate}
+        onChange={(e) =>
+          setRequiredDate(e.target.value)
+        }
+        className="w-full px-4 py-3 rounded-xl border border-slate-300 text-black"
+      />
+
+    </div>
+
+  </div>
+
+  <div className="mt-6">
+
+    <label className="block text-sm font-semibold mb-2">
+
+      Remarks
+
+    </label>
+
+    <textarea
+      value={requestRemark}
+      onChange={(e) =>
+        setRequestRemark(e.target.value)
+      }
+      rows={3}
+      placeholder="Additional remarks..."
+      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-black resize-none"
+    />
+
+  </div>
+
+  <div className="mt-8">
+
+    <button
+
+      onClick={handleSubmitRequirement}
+
+      className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white px-6 h-10 rounded-xl shadow-md hover:shadow-lg transition duration-300 font-medium text-sm"
+
+    >
+
+      ✅ Submit Requirement
+
+    </button>
+
+  </div>
+
+</div>
+)}
+
+<div
+  className={`mt-10 p-6 rounded-3xl shadow-xl ${
+    darkMode
+      ? "bg-slate-700"
+      : "bg-slate-100"
+  }`}
+>
+
+  {/* Summary Cards */}
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+
+    <div className="bg-yellow-100 border border-yellow-300 rounded-2xl p-5 shadow-sm">
+
+      <h4 className="text-sm font-semibold text-yellow-700 uppercase">
+
+        Pending
+
+      </h4>
+
+      <p className="text-4xl font-extrabold text-yellow-800 mt-2">
+
+        {
+          requirementsList.filter(
+            (req) =>
+              req.status === "Pending"
+          ).length
+        }
+
+      </p>
+
+    </div>
+
+    <div className="bg-green-100 border border-green-300 rounded-2xl p-5 shadow-sm">
+
+      <h4 className="text-sm font-semibold text-green-700 uppercase">
+
+        Approved
+
+      </h4>
+
+      <p className="text-4xl font-extrabold text-green-800 mt-2">
+
+        {
+          requirementsList.filter(
+            (req) =>
+              req.status === "Approved"
+          ).length
+        }
+
+      </p>
+
+    </div>
+
+    <div className="bg-red-100 border border-red-300 rounded-2xl p-5 shadow-sm">
+
+      <h4 className="text-sm font-semibold text-red-700 uppercase">
+
+        Rejected
+
+      </h4>
+
+      <p className="text-4xl font-extrabold text-red-800 mt-2">
+
+        {
+          requirementsList.filter(
+            (req) =>
+              req.status === "Rejected"
+          ).length
+        }
+
+      </p>
+
+    </div>
+
+    <div className="bg-blue-100 border border-blue-300 rounded-2xl p-5 shadow-sm">
+
+      <h4 className="text-sm font-semibold text-blue-700 uppercase">
+
+        Dispatched
+
+      </h4>
+
+      <p className="text-4xl font-extrabold text-blue-800 mt-2">
+
+        {
+          requirementsList.filter(
+            (req) =>
+              req.dispatchDate
+          ).length
+        }
+
+      </p>
+
+    </div>
+
+  </div>
+
+  {/* Heading */}
+
+  <h3 className="text-2xl font-bold mb-6">
+
+    📋 Submitted Requirements
+
+  </h3>
+
+  {requirementsList.length === 0 ? (
+
+    <div className="text-center py-10 text-slate-500">
+
+      No requirements submitted yet
+
+    </div>
+
+  ) : (
+
+    <div className="overflow-x-auto">
+
+      <table className="w-full border-collapse">
+
+        <thead>
+
+          <tr
+            className={`${
+              darkMode
+                ? "bg-slate-800 text-white"
+                : "bg-slate-300 text-slate-800"
+            }`}
+          >
+
+            <th className="p-4 text-left">
+
+              Req No
+
+            </th>
+
+            <th className="p-4 text-left">
+
+              Department
+
+            </th>
+
+            <th className="p-4 text-left">
+
+              Equipment
+
+            </th>
+
+            <th className="p-4 text-left">
+
+              Priority
+
+            </th>
+
+            <th className="p-4 text-left">
+
+              Status
+
+            </th>
+
+            <th className="p-4 text-center">
+
+              Details
+
+            </th>
+
+            {role === "admin" && (
+
+              <th className="p-4 text-center">
+
+                Approval
+
+              </th>
+
+            )}
+
+            <th className="p-4 text-center">
+
+              Dispatch
+
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          {requirementsList.map((req, index) => (
+
+            <tr
+              key={index}
+              className={`border-b ${
+                darkMode
+                  ? "border-slate-600"
+                  : "border-slate-300"
+              } hover:bg-slate-50/50 transition duration-200`}
+            >
+
+              <td className="p-4 font-semibold">
+
+                {req.reqNo}
+
+              </td>
+
+              <td className="p-4">
+
+                {req.department}
+
+              </td>
+
+              <td className="p-4">
+
+                {req.items
+                  .map((item) => item.name)
+                  .join(", ")}
+
+              </td>
+
+              <td className="p-4">
+
+                <span
+                  className={`px-3 py-1 rounded-full text-white text-xs font-bold ${
+                    req.priority === "Critical"
+                      ? "bg-red-600"
+
+                      : req.priority === "Urgent"
+                      ? "bg-orange-500"
+
+                      : "bg-blue-600"
+                  }`}
+                >
+
+                  {req.priority}
+
+                </span>
+
+              </td>
+
+              <td className="p-4">
+
+                <span
+                  className={`px-4 py-2 rounded-full text-white text-xs font-bold shadow-sm ${
+                    req.status === "Pending"
+                      ? "bg-yellow-500"
+
+                      : req.status === "Approved"
+                      ? "bg-green-600"
+
+                      : req.status === "Rejected"
+                      ? "bg-red-600"
+
+                      : "bg-blue-600"
+                  }`}
+                >
+
+                  {req.status}
+
+                </span>
+
+              </td>
+
+              {/* Details */}
+
+              <td className="p-4 text-center">
+
+                <button
+
+                  onClick={() => {
+const equipmentDetails = req.items
+  .map(
+    (item) =>
+      `• ${item.name}
+Category: ${item.category}
+Received From: ${item.receivedFrom}`
+  )
+  .join("\n\n");
+
+const details = `
+Department:
+${req.department}
+
+Purpose:
+${req.purpose}
+
+Priority:
+${req.priority}
+
+Required Date:
+${req.requiredDate}
+
+Status:
+${req.status}
+
+Remarks:
+${req.remark || "N/A"}
+
+Requested Equipment:
+${equipmentDetails}
+`;
+
+                    alert(details);
+
+                  }}
+
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition duration-300"
+
+                >
+
+                  View
+
+                </button>
+
+              </td>
+
+              {/* Approval */}
+
+              {role === "admin" && (
+
+                <td className="p-4 text-center">
+
+                  {req.status === "Pending" ? (
+
+                    <div className="flex gap-2 justify-center">
+
+                      <button
+
+                        onClick={async () => {
+
+                          setRequirementsList(
+
+                            requirementsList.map((r) =>
+
+                              r.id === req.id
+
+                                ? {
+
+                                    ...r,
+
+                                    status: "Approved",
+
+                                    approvedBy:
+                                      user.email,
+
+                                    actionDate:
+                                      new Date().toLocaleString()
+
+                                  }
+
+                                : r
+
+                            )
+
+                          );
+
+                          await updateDoc(
+
+                            doc(
+                              db,
+                              "requirements",
+                              req.firebaseId
+                            ),
+
+                            {
+
+                              status: "Approved",
+
+                              approvedBy:
+                                user.email,
+
+                              actionDate:
+                                new Date().toLocaleString()
+
+                            }
+
+                          );
+
+                          toast.success(
+                            "Requirement Approved"
+                          );
+
+                        }}
+
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-medium"
+
+                      >
+
+                        Approve
+
+                      </button>
+
+                      <button
+
+                        onClick={async () => {
+
+                          setRequirementsList(
+
+                            requirementsList.map((r) =>
+
+                              r.id === req.id
+
+                                ? {
+
+                                    ...r,
+
+                                    status: "Rejected",
+
+                                    rejectedBy:
+                                      user.email,
+
+                                    actionDate:
+                                      new Date().toLocaleString()
+
+                                  }
+
+                                : r
+
+                            )
+
+                          );
+
+                          await updateDoc(
+
+                            doc(
+                              db,
+                              "requirements",
+                              req.firebaseId
+                            ),
+
+                            {
+
+                              status: "Rejected",
+
+                              rejectedBy:
+                                user.email,
+
+                              actionDate:
+                                new Date().toLocaleString()
+
+                            }
+
+                          );
+
+                          toast.success(
+                            "Requirement Rejected"
+                          );
+
+                        }}
+
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-medium"
+
+                      >
+
+                        Reject
+
+                      </button>
+
+                    </div>
+
+                  ) : (
+
+                    <span className="text-slate-500 text-sm">
+
+                      Completed
+
+                    </span>
+
+                  )}
+
+                </td>
+
+              )}
+
+              {/* Dispatch */}
+
+              <td className="p-4 text-center">
+
+                {req.status === "Approved" &&
+                !req.dispatchDate ? (
+
+                  <button
+
+                    onClick={async () => {
+
+                      setRequirementsList(
+
+                        requirementsList.map((r) =>
+
+                          r.id === req.id
+
+                            ? {
+
+                                ...r,
+
+                                dispatchDate:
+                                  new Date().toLocaleString()
+
+                              }
+
+                            : r
+
+                        )
+
+                      );
+
+                      await updateDoc(
+
+                        doc(
+                          db,
+                          "requirements",
+                          req.firebaseId
+                        ),
+
+                        {
+
+                          dispatchDate:
+                            new Date().toLocaleString()
+
+                        }
+
+                      );
+
+                      toast.success(
+                        "Equipment Dispatched"
+                      );
+
+                    }}
+
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium"
+
+                  >
+
+                    Dispatch
+
+                  </button>
+
+                ) : (
+
+                  <span className="text-sm text-slate-500">
+
+                    {req.dispatchDate
+                      ? "Dispatched"
+                      : "-"}
+
+                  </span>
+
+                )}
+
+              </td>
+
+            </tr>
+
+          ))}
+
+        </tbody>
+
+      </table>
+
+    </div>
+    
+  )}
+
+</div>
+
+
+
+{activeMenu === "Reports" && (
+<div
+className={`backdrop-blur-lg mt-10 p-8 rounded-3xl shadow-2xl border ${
+darkMode
+? "bg-slate-800/80 border-slate-700"
+: "bg-white/80 border-white/30"
+}`}
+>
+<div className="flex justify-between items-center mb-6">
+<h3 className={`text-3xl font-extrabold ${
+darkMode ? "text-white" : "text-slate-800"
+}`}>
+Equipment List
+</h3>
+<div className="flex gap-4 mb-8">
+<button
+onClick={() => setActiveBay("All")}
+className={`px-6 py-3 rounded-2xl font-bold transition duration-300 ${
+activeBay === "All"
+? "bg-slate-800 text-white shadow-lg"
+: "bg-slate-200 text-slate-700"
+}`}
+>
+📋 All Equipment
+</button>
+<button
+onClick={() => setActiveBay("Received Bay")}
+className={`px-6 py-3 rounded-2xl font-bold transition duration-300 ${
+activeBay === "Received Bay"
+? "bg-blue-600 text-white shadow-lg"
+: "bg-slate-200 text-slate-700"
+}`}
+>
+📥 Received Bay
+</button>
+<button
+onClick={() => setActiveBay("Overhauling Bay")}
+className={`px-6 py-3 rounded-2xl font-bold transition duration-300 ${
+activeBay === "Overhauling Bay"
+? "bg-orange-500 text-white shadow-lg"
+: "bg-slate-200 text-slate-700"
+}`}
+>
+🛠 Overhauling Bay
+</button>
+<button
+onClick={() => setActiveBay("Finished Bay")}
+className={`px-6 py-3 rounded-2xl font-bold transition duration-300 ${
+activeBay === "Finished Bay"
+? "bg-green-600 text-white shadow-lg"
+: "bg-slate-200 text-slate-700"
+}`}
+>
+✅ Finished Bay
+</button>
+</div>
+<div className="flex items-center gap-4 mb-6">
+<input
+type="text"
+placeholder="Search equipment..."
+value={searchTerm}
+onChange={(e) => setSearchTerm(e.target.value)}
+className={`p-3 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition border ${
+darkMode
+? "bg-slate-700 border-slate-600 text-white placeholder-slate-300"
+: "bg-white/70 border-slate-200 text-slate-900"
+}`}
+/>
+<button
+onClick={exportToExcel}
+className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-2xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 font-bold"
+>
+📥 Export Excel
+</button>
+</div>
+</div>
+<div className="overflow-x-auto">
+<table className="w-full border-collapse">
+<thead>
+<tr
+className={`uppercase text-sm tracking-wide ${
+darkMode
+? "bg-slate-700 text-slate-200"
+: "bg-slate-100 text-slate-700"
+}`}
+>
+<th className="text-left p-3">WO No</th>
+<th className="text-left p-3">Equipment Category</th>
+<th className="text-left p-3">Equipment Type</th>
+<th className="text-left p-3">Current Bay</th>
+<th className="text-left p-3">Received Date</th>
+<th className="text-left p-3">Received From</th>
+<th className="text-left p-3">Tentative Date</th>
+<th className="text-left p-3">Status</th>
+{role === "admin" && (
+  <th className="text-left p-3">
+    Action
+  </th>
+)}
+</tr>
+</thead>
+<tbody>
+{equipmentList.filter(
+(item) =>
+(activeBay === "All" || item.currentBay === activeBay) &&
+item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  ).map((item, index) => (
+<tr
+key={index}
+className={`border-b transition duration-300 ${
+item.tentativeDate &&
+item.tentativeDate < new Date().toISOString().split("T")[0] &&
+item.status !== "Completed"
+? darkMode
+? "bg-red-900/30 border-red-700"
+: "bg-red-100 border-red-300"
+: darkMode
+? "border-slate-700 hover:bg-slate-700/40"
+: "border-slate-200 hover:bg-slate-50"
+}`}
+>
+<td
+className={`p-3 ${
+darkMode ? "text-slate-200" : "text-slate-700"
+}`}
+>
+  {item.workOrderNo}
+</td>
+<td
+className={`p-3 ${
+darkMode ? "text-slate-200" : "text-slate-700"
+}`}
+>
+{item.category}
+</td>
+<td
+className={`p-3 ${
+darkMode ? "text-slate-200" : "text-slate-700"
+}`}
+>
+{item.name}
+</td>
+<td
+className={`p-3 ${
+darkMode ? "text-slate-200" : "text-slate-700"
+}`}
+>
+{item.currentBay}
+</td>
+<td
+className={`p-3 ${
+darkMode ? "text-slate-200" : "text-slate-700"
+}`}
+>
+{item.receivedDate}
+</td>
+<td
+className={`p-3 ${
+darkMode ? "text-slate-200" : "text-slate-700"
+}`}
+>
+{item.receivedFrom}
+</td>
+<td
+className={`p-3 ${
+darkMode ? "text-slate-200" : "text-slate-700"
+}`}
+>
+{item.tentativeDate || "-"}
+</td>
+<td className="p-3">
+<span
+className={`px-4 py-2 rounded-full text-white text-sm font-bold shadow-md tracking-wide
+${
+item.status === "Dismantled"
+? "bg-red-500"
+: item.status === "Work Under Progress"
+? "bg-yellow-500"
+: item.status === "Testing"
+? "bg-blue-500"
+: "bg-green-500"
+}`}
+>
+{item.status}
+</span>
+</td>
+{role === "admin" && (
+  <td className="p-3">
+
+    <button
+      onClick={() => {
+
+  setActiveMenu("Equipment");
+
+  handleEditEquipment(item, index);
+
+}}
+      className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 mr-2 font-semibold"
+    >
+      Edit
+    </button>
+
+    <button
+      onClick={() =>
+        handleDeleteEquipment(
+          item.firebaseId
+        )
+      }
+      className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition duration-300 font-semibold"
+    >
+      Delete
+    </button>
+
+  </td>
+)}
+</tr>
+))}
+</tbody>
+</table>
+</div>
+</div>
+)}
+</div>
+</div>
+</div>
+</div>
+);
+}
+export default App;
